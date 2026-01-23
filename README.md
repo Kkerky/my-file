@@ -1,4 +1,29 @@
 # my-file
+1.23
+(function runTransformScript(source, map, log, target /*undefined onStart*/ ) {
+
+    // 判断：如果系统决定执行 "update" (意味着 Coalesce 匹配到了重复数据)
+    if (action == 'update') {
+        
+        // 1. 拒绝这次操作 (数据不会被更新，保持原样)
+        ignore = true;
+
+        // 2. 标记为错误状态 (这样你在 Import Set Rows 列表里会看到红色的 Error)
+        error = true;
+
+        // 3. 自定义报错信息 (会显示在 Error Message 列)
+        // source.u_account_id 和 source.u_name 请替换为你 CSV 里真实的列名
+        var msg = '发现重复数据，已拦截: ' + source.u_account_id + ' - ' + source.u_name;
+        error_message = msg;
+        
+        // 可选：写日志到 System Log
+        log.info(msg);
+    }
+
+})(source, map, log, target);
+
+
+
 <div class="panel panel-default">
   <div class="panel-heading">
     <h3 class="panel-title">① システム一覧画面 (System Asset List)</h3>
