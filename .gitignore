@@ -1,0 +1,46 @@
+# Local browser/test profiles
+.chrome-docs*/
+
+# Local runtimes and package folders
+node_modules/
+**/node_modules/
+node-v*-extracted/
+python-manager-*-msix/
+
+# Installers, archives, and install logs
+*.exe
+*.zip
+*.log
+
+# Nested/temporary working repositories and scratch folders
+_git_my-file/
+work/
+references/
+
+# Generated inspection/preview artifacts
+*.inspect.ndjson
+*.formula_errors.ndjson
+preview_*.png
+outputs/**/preview_*.png
+outputs/**/*.inspect.ndjson
+outputs/**/*.formula_errors.ndjson
+
+# Downloaded source/reference PDFs
+outputs/*.pdf
+
+# Legacy local output work areas already handled separately.
+# New final deliverables can still be force-added explicitly when needed.
+outputs/azure_discovery_poc/
+outputs/git_handoff_snow02_20260618/
+outputs/servicenow_ci_service_assessment/
+
+# Local build helper scripts and ad-hoc working files
+build_*.py
+build_*.mjs
+extract_servicenow_pdf_pages.py
+make_docx_contact_sheets.py
+render_docx_pages_word.ps1
+config.xml
+work_65*.xlsx
+ServiceNow_CI_to_Service_Solution_Assessment_CN.md
+新建 文本文档.txt
