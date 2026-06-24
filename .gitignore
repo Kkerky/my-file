@@ -11,6 +11,7 @@ python-manager-*-msix/
 *.exe
 *.zip
 *.log
+~$*.xlsx
 
 # Nested/temporary working repositories and scratch folders
 _git_my-file/
