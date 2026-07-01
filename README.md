@@ -57,4 +57,6 @@
    - MID Server VM → ServiceNow Instance：HTTPS 443
    - MID Server VM → インストーラ配布元：HTTPS 443
    - MID Server → Windows / Linux / Palo Alto / FortiGate：Discovery に必要な各ポート
-   - 
+  
+8. 本次 PoC 不涉及 GWAN / 社内ネットワーク Discovery。
+ただし、MID Server のインストール・ServiceNow 接続に必要な外部 HTTPS 通信、および MID Server から ITOM1/2/3 内の Discovery 対象への通信については、URL Filter / Subnet NSG / Firewall により制限される場合、通信許可申請が必要となる可能性がある。
