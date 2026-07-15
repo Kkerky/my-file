@@ -351,3 +351,65 @@ file mid-signatures.zip
 ```
 
 正确结果应约`2.0K`，并显示`Zip archive data`。若提示文件超过限制，说明仍然复制了DEB链接，不会再次下载完整大文件。
+--------------------------------------------------------------------------------------------------------------------
+
+这两张图已经能确认问题了：你之前复制的是蓝色的 `Download`，不是下面的 `Download signatures`。
+
+正确位置是：
+
+`Linux (DEB) - 64 bit` 这一行 → 点击下面的 `Download signatures`
+
+不要点击蓝色的 `Download`。你之前使用的 URL 中包含：
+
+```text
+mid-linux-installer...linux.x86-64-deb.zip
+```
+
+这是 MID Server 安装包，不是签名文件，所以才会下载约 530 MB。
+
+操作步骤：
+
+1. 在 `Linux (DEB) - 64 bit` 行点击 `Download signatures`。
+2. 右键这个按钮，选择“复制链接地址”。
+3. 在 Linux 终端执行：
+
+```bash
+cd ~/mid-installs
+rm -f mid-signatures.zip
+SIG_URL='这里粘贴刚才复制的Download signatures链接'
+printf '%s\n' "$SIG_URL"
+```
+
+确认显示的是签名链接后，再执行：
+
+```bash
+curl --fail --location --retry 3 \
+  --output mid-signatures.zip "$SIG_URL"
+
+ls -lh mid-signatures.zip
+unzip -l mid-signatures.zip
+```
+
+正确的签名 ZIP 应该明显小于 530 MB，并且内容中应能看到类似：
+
+```text
+ServiceNow_Digicert_Public.gpg
+```
+
+然后执行：
+
+```bash
+mkdir -p mid-signatures
+unzip -o mid-signatures.zip -d mid-signatures
+
+gpg --import mid-signatures/ServiceNow_Digicert_Public.gpg
+dpkg-sig --verify mid-linux-installer.deb
+```
+
+如果验证成功，再安装：
+
+```bash
+sudo dpkg -i ./mid-linux-installer.deb
+```
+
+ServiceNow 官方文档也明确区分了 Linux DEB 安装包和 DEB 签名文件，签名文件应通过 `Download signatures` 获取。[官方 Linux MID Server 安装文档](https://www.servicenow.com/docs/r/servicenow-platform/mid-server/t_InstallAMIDServerOnLinux.html)
