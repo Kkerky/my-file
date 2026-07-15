@@ -185,3 +185,5 @@ df -h .
 - 此时不使用`sudo`，也不安装任何内容
 
 执行后截图给我。下一步会用不显示URL、不把URL写进Shell历史记录的方式下载。
+
+read -s -p 'Download URL: ' MID_URL; echo
