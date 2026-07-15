@@ -67,13 +67,41 @@ Azure は Tenant ID、Subscription ID、Client ID、Client Secret が必要で�
 - `現時点では仮定であり、各システムオーナーおよびNW担当と確認します。`
 
 
-$mid = Get-ChildItem "$env:USERPROFILE\Downloads\mid-windows-installer*" |
-    Select-Object -First 1
+剪贴板已经可以使用，安装包也确认完整落盘：
 
-$mid | Select-Object Name, Length, LastWriteTime
+- 文件：`mid-windows-installer.australia-02-11-2026__patch3-hotfix1-06-18-2026_06-19-2026_0938.windows.x86-64.msi`
+- 大小：`562,954,752 bytes`
+- 时间：`2026/07/15 04:32:47 AM`，仍是 UTC
 
-Get-FileHash $mid.FullName -Algorithm SHA256
+当前左下角显示 `>>`，说明 PowerShell 还处于多行命令等待状态，SHA-256 和签名结果没有正常显示。先按 `Ctrl+C` 返回正常的 `PS C:\...>` 提示符，再逐行执行：
 
-Get-AuthenticodeSignature $mid.FullName |
-    Select-Object Status, StatusMessage,
-        @{Name='Signer';Expression={$_.SignerCertificate.Subject}}
+```powershell
+$mid = Get-ChildItem "$env:USERPROFILE\Downloads\mid-windows-installer*" | Select-Object -First 1
+```
+
+```powershell
+Get-FileHash $mid.FullName -Algorithm SHA256 | Format-List Algorithm,Hash,Path
+```
+
+```powershell
+$sig = Get-AuthenticodeSignature $mid.FullName
+```
+
+```powershell
+$sig | Format-List Status,StatusMessage
+```
+
+```powershell
+$sig.SignerCertificate | Format-List Subject,Issuer,NotAfter,Thumbprint
+```
+
+另外，执行安装前把时区改为日本：
+
+```powershell
+Set-TimeZone -Id "Tokyo Standard Time"
+Get-TimeZone
+Get-Date
+```
+
+重点保留 `Hash`、`Status: Valid` 和签名发行者的截图。
+
