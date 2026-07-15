@@ -413,3 +413,73 @@ sudo dpkg -i ./mid-linux-installer.deb
 ```
 
 ServiceNow 官方文档也明确区分了 Linux DEB 安装包和 DEB 签名文件，签名文件应通过 `Download signatures` 获取。[官方 Linux MID Server 安装文档](https://www.servicenow.com/docs/r/servicenow-platform/mid-server/t_InstallAMIDServerOnLinux.html)
+
+----------------------------------------------------------------------------------------
+现在可以确认：
+
+1. 你当前已经在正确目录 `~/mid-installs`，不需要再执行 `cd /mid-installs`。  
+2. `unzip` 没有安装。  
+3. `SIG_URL` 仍然是安装包地址，而且可能混入了换行，所以 `curl` 报错。  
+4. `mid-signatures.zip` 实际并没有下载成功。
+
+先执行：
+
+```bash
+sudo apt-get update
+sudo apt-get install -y unzip
+```
+
+然后清空错误变量：
+
+```bash
+unset SIG_URL
+rm -f mid-signatures.zip
+```
+
+回到 ServiceNow 页面，在 `Linux (DEB) - 64 bit` 这一行点击下面的：
+
+```text
+Download signatures
+```
+
+右键该按钮，选择“复制链接地址”。
+
+回到终端，将地址作为一整行粘贴：
+
+```bash
+SIG_URL='这里粘贴Download signatures复制的地址'
+```
+
+确认变量内容：
+
+```bash
+printf '%q\n' "$SIG_URL"
+```
+
+如果显示内容中有 `$'\r'` 或 `$'\n'`，执行清理：
+
+```bash
+SIG_URL=$(printf '%s' "$SIG_URL" | tr -d '\r\n')
+```
+
+再下载：
+
+```bash
+curl --fail --location --retry 3 \
+  --output mid-signatures.zip "$SIG_URL"
+```
+
+确认文件：
+
+```bash
+ls -lh mid-signatures.zip
+unzip -l mid-signatures.zip
+```
+
+如果仍然下载出约 530 MB，说明复制的还是蓝色 `Download` 地址；正确的签名文件通常会小很多，并应包含类似：
+
+```text
+ServiceNow_Digicert_Public.gpg
+```
+
+你现在截图中的错误不是 `unzip` 导致的，根本原因是签名文件还没有正确下载。
