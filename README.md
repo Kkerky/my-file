@@ -112,3 +112,21 @@ Get-CimInstance Win32_Service -Filter "Name='snc_mid_P5230-ITOM1-MID'" |
   Select-Object Name, Enabled, PasswordExpires, PasswordLastSet
   getent hosts hitachiopdev.service-now.com
 curl -I --connect-timeout 10 https://hitachiopdev.service-now.com
+
+时区设置成功。第一次红色错误只是把 `timezone` 输入成了 `tiemzone`，第二次命令正确执行，不影响系统。
+
+当前结果：
+
+- Time zone：`Asia/Tokyo (JST, +0900)`
+- System clock synchronized：`yes`
+- NTP service：`active`
+- Local time：JST
+
+下一步先测试 Linux MID 到公司 ServiceNow Dev 实例的 DNS 和 HTTPS 通信：
+
+```bash
+getent hosts hitachiopdev.service-now.com
+curl -I --connect-timeout 10 https://hitachiopdev.service-now.com
+```
+
+`curl` 返回 `HTTP 200`、`302`、`401` 或 `403` 都可以证明 HTTPS 已连通；重点是不能出现 DNS、timeout 或 certificate 错误。执行后截图发给我。
