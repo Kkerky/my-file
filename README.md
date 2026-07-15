@@ -494,3 +494,35 @@ https://install.service-now.com/...
 curl --fail --location --retry 3 \
   --output mid-signatures.zip "$SIG_URL"
 ```
+这次已经成功了。
+
+关键证据：
+
+```text
+100  1347  100  1347
+```
+
+说明 `mid-signatures.zip` 已下载完成，大小约 1.3 KB，而且 `echohttps` 问题也已经修正。
+
+现在执行：
+
+```bash
+ls -lh mid-signatures.zip
+unzip -l mid-signatures.zip
+```
+
+如果能看到类似：
+
+```text
+ServiceNow_Digicert_Public.gpg
+```
+
+继续执行：
+
+```bash
+mkdir -p mid-signatures
+unzip -o mid-signatures.zip -d mid-signatures
+find mid-signatures -maxdepth 2 -type f -print
+```
+
+把 `unzip -l mid-signatures.zip` 的结果截图发来，我再确认下一步的公钥导入和 DEB 签名验证命令。
