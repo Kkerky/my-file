@@ -245,3 +245,31 @@ sha256sum mid-linux-installer.deb
 - SHA-256校验值
 
 执行后截图给我。此步骤不需要`sudo`。
+
+检查结果正常：
+
+- 精确大小：`556,038,130 bytes`
+- 格式：有效的`Debian binary package`
+- Package：`agent`
+- Version：`29.3.1.1-2986.el9`
+- Vendor：`ServiceNow, Inc.`
+- Architecture：`amd64`
+- SHA-256：
+
+```text
+54d89a39687f85d6ef540f2ee230526a3b25b24a182c362e22b1b0203d4de6f4
+```
+
+前面第一次`stat`输入错误没有影响，第二次已经执行成功。
+
+安装前再比较Windows本地文件与Ubuntu文件是否完全一致：
+
+1. 回到Windows保存DEB文件的文件夹。
+2. 点击资源管理器地址栏，输入`powershell`并按Enter。
+3. 执行：
+
+```powershell
+(Get-FileHash -Algorithm SHA256 -Path .\*.deb).Hash
+```
+
+结果应与上面的64位SHA-256完全一致，大小写可以忽略。完成后截图给我；暂时不要执行`dpkg`或`apt install`。
