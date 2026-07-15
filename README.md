@@ -273,3 +273,40 @@ sha256sum mid-linux-installer.deb
 ```
 
 结果应与上面的64位SHA-256完全一致，大小写可以忽略。完成后截图给我；暂时不要执行`dpkg`或`apt install`。
+正常。签名ZIP里只有一个：
+
+- `gpg-key.pem`
+- 大小约2 KB
+- 这是ServiceNow提供的**公开验证密钥**，不是私钥
+- DEB的签名信息通常已嵌入安装包，所以ZIP只提供验证用公钥
+
+现在把签名ZIP直接下载到Ubuntu：
+
+1. 在Edge下载记录中复制这个2 KB ZIP的下载链接。
+2. 回到Ubuntu终端，执行：
+
+```bash
+cd ~/mid-install
+```
+
+```bash
+read -s -p 'Signature URL: ' SIG_URL; echo
+```
+
+3. 提示出现后粘贴完整URL并按Enter。URL不会显示。
+4. 然后执行：
+
+```bash
+curl --fail --location --retry 3 \
+  --output mid-signatures.zip "$SIG_URL"
+```
+
+```bash
+unset SIG_URL
+```
+
+```bash
+ls -lh mid-signatures.zip
+```
+
+完成后截图给我。暂时不要导入密钥，也不要安装DEB。
