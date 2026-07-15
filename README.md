@@ -310,3 +310,44 @@ ls -lh mid-signatures.zip
 ```
 
 完成后截图给我。暂时不要导入密钥，也不要安装DEB。
+
+这次复制的仍然是**DEB安装包链接**，不是签名ZIP链接：
+
+- 期望签名ZIP：约`2 KB`
+- 实际下载：`531M`
+- 所以`mid-signatures.zip`只是另一份DEB，被错误命名成`.zip`
+
+没有安装，不影响系统。先删除这份错误副本：
+
+```bash
+rm -- mid-signatures.zip
+```
+
+然后在Edge的`Ctrl+J`下载记录中，找到**文件名以`-deb.zip`结尾、大小2 KB**的记录，复制它的下载链接。
+
+重新下载时增加1 MB限制，避免再次下载530 MB：
+
+```bash
+read -s -p 'Signature ZIP URL: ' SIG_URL; echo
+```
+
+粘贴正确URL并按Enter，然后逐行执行：
+
+```bash
+curl --fail --location --max-filesize 1048576 \
+  --output mid-signatures.zip "$SIG_URL"
+```
+
+```bash
+unset SIG_URL
+```
+
+```bash
+ls -lh mid-signatures.zip
+```
+
+```bash
+file mid-signatures.zip
+```
+
+正确结果应约`2.0K`，并显示`Zip archive data`。若提示文件超过限制，说明仍然复制了DEB链接，不会再次下载完整大文件。
