@@ -218,3 +218,30 @@ ls -lh mid-linux-installer.deb
 ```
 
 下载约530 MB，可能需要几分钟。若粘贴失败，不要手工输入长URL，先停止并截图Bastion终端周围的工具栏。若出现 `401`、`403`或其他错误，只截图错误，不要截图URL。
+
+
+下载成功：
+
+- HTTP下载完成：`100%`
+- 文件大小：Linux显示约`531M`，与Windows端`543,006 KB`一致
+- 文件名：`mid-linux-installer.deb`
+- URL变量已通过`unset MID_URL`清除
+- 截图中没有显示完整URL或令牌
+
+现在先验证安装包，不安装。执行：
+
+```bash
+stat -c 'Size: %s bytes' mid-linux-installer.deb
+file mid-linux-installer.deb
+dpkg-deb --info mid-linux-installer.deb | sed -n '1,25p'
+sha256sum mid-linux-installer.deb
+```
+
+这些命令分别确认：
+
+- 精确字节数
+- 是否为有效Debian安装包
+- ServiceNow包名、版本和架构
+- SHA-256校验值
+
+执行后截图给我。此步骤不需要`sudo`。
