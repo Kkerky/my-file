@@ -107,3 +107,6 @@ Get-Date
 
 Get-CimInstance Win32_Service -Filter "Name='snc_mid_P5230-ITOM1-MID'" |
     Select-Object Name, DisplayName, StartName, State, StartMode
+
+    Get-LocalUser -Name "svc_mid_p5230" |
+  Select-Object Name, Enabled, PasswordExpires, PasswordLastSet
