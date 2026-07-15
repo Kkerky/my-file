@@ -165,3 +165,23 @@ curl -I --connect-timeout 10 http://ocsp.entrust.net
 ```
 
 OCSP 使用 HTTP 80 是正常设计。返回 `200`、`301/302`、`400`、`403` 或 `404` 都可视为网络可达；重点是不能出现 DNS 失败或 timeout。执行后截图发给我。
+
+很好，说明Ubuntu可以直接从ServiceNow官方站点拉取安装包，无需通过Bastion上传本地文件。
+
+完整URL不要发给我，也不要截图。先保持记事本中的链接不变。
+
+现在进入 `P5230-ITOM2-MID` 的Bastion SSH终端，只执行：
+
+```bash
+mkdir -p ~/mid-install
+cd ~/mid-install
+df -h .
+```
+
+目的：
+
+- 创建临时安装目录
+- 确认磁盘剩余空间
+- 此时不使用`sudo`，也不安装任何内容
+
+执行后截图给我。下一步会用不显示URL、不把URL写进Shell历史记录的方式下载。
