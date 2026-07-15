@@ -148,3 +148,20 @@ curl -I --connect-timeout 10 https://install.service-now.com
 ```
 
 返回 `200`、`301/302`、`401` 或 `403` 都表示网络已连通。重点确认没有 DNS、timeout、proxy 或 certificate 错误。执行后截图发给我。
+
+`install.service-now.com` 通信完全正常：
+
+- DNS：`149.96.6.98`
+- HTTPS：`HTTP/1.1 200 OK`
+- 无 timeout、proxy 或 certificate 错误
+
+说明 Linux VM 可以直接访问 MID Server 安装包站点。
+
+安装前还需要确认官方要求的证书吊销检查地址，执行：
+
+```bash
+curl -I --connect-timeout 10 http://ocsp.digicert.com
+curl -I --connect-timeout 10 http://ocsp.entrust.net
+```
+
+OCSP 使用 HTTP 80 是正常设计。返回 `200`、`301/302`、`400`、`403` 或 `404` 都可视为网络可达；重点是不能出现 DNS 失败或 timeout。执行后截图发给我。
