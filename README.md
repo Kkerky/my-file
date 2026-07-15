@@ -65,3 +65,15 @@ Azure は Tenant ID、Subscription ID、Client ID、Client Secret が必要で�
 - `対象範囲、通信経路、認証情報、実施時間を限定して検証します。`
 - `正式なポート・権限は、対象機器と管理方式を確認したうえで整理します。`
 - `現時点では仮定であり、各システムオーナーおよびNW担当と確認します。`
+
+
+$mid = Get-ChildItem "$env:USERPROFILE\Downloads\mid-windows-installer*" |
+    Select-Object -First 1
+
+$mid | Select-Object Name, Length, LastWriteTime
+
+Get-FileHash $mid.FullName -Algorithm SHA256
+
+Get-AuthenticodeSignature $mid.FullName |
+    Select-Object Status, StatusMessage,
+        @{Name='Signer';Expression={$_.SignerCertificate.Subject}}
