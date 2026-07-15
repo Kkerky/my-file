@@ -110,3 +110,5 @@ Get-CimInstance Win32_Service -Filter "Name='snc_mid_P5230-ITOM1-MID'" |
 
     Get-LocalUser -Name "svc_mid_p5230" |
   Select-Object Name, Enabled, PasswordExpires, PasswordLastSet
+  getent hosts hitachiopdev.service-now.com
+curl -I --connect-timeout 10 https://hitachiopdev.service-now.com
