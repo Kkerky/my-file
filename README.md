@@ -130,3 +130,21 @@ curl -I --connect-timeout 10 https://hitachiopdev.service-now.com
 ```
 
 `curl` 返回 `HTTP 200`、`302`、`401` 或 `403` 都可以证明 HTTPS 已连通；重点是不能出现 DNS、timeout 或 certificate 错误。执行后截图发给我。
+
+ServiceNow Dev 实例通信正常：
+
+- DNS：`hitachiopdev.service-now.com → 149.96.198.119`
+- HTTPS：`HTTP/1.1 200 OK`
+- TLS/证书：没有错误
+- 连接未超时
+
+这证明 ITOM2 Subnet 能通过公司网络访问 ServiceNow 实例。
+
+下一步验证 MID 安装包下载地址：
+
+```bash
+getent hosts install.service-now.com
+curl -I --connect-timeout 10 https://install.service-now.com
+```
+
+返回 `200`、`301/302`、`401` 或 `403` 都表示网络已连通。重点确认没有 DNS、timeout、proxy 或 certificate 错误。执行后截图发给我。
