@@ -467,3 +467,30 @@ unzip -l mid-signatures.zip
 ```
 
 如果看到 `ServiceNow_Digicert_Public.gpg`，说明签名 ZIP 下载正确。若又下载出约 530 MB，说明复制的仍然是蓝色 `Download` 的链接。
+
+在当前终端直接执行：
+
+```bash
+SIG_URL="${SIG_URL#echo}"
+```
+
+确认：
+
+```bash
+printf '%s\n' "$SIG_URL"
+```
+
+如果开头显示：
+
+```text
+https://install.service-now.com/...
+```
+
+就修正成功了。
+
+然后再执行下载：
+
+```bash
+curl --fail --location --retry 3 \
+  --output mid-signatures.zip "$SIG_URL"
+```
