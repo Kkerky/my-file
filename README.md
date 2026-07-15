@@ -187,3 +187,34 @@ df -h .
 执行后截图给我。下一步会用不显示URL、不把URL写进Shell历史记录的方式下载。
 
 read -s -p 'Download URL: ' MID_URL; echo
+
+磁盘空间足够：
+
+- 根磁盘：29 GB
+- 已使用：1.7 GB
+- 可用：27 GB
+
+现在安全下载，避免完整URL显示在终端或写入命令历史。
+
+先执行：
+
+```bash
+read -s -p 'Download URL: ' MID_URL; echo
+```
+
+终端显示 `Download URL:` 后：
+
+1. 粘贴完整的 `https://install.service-now.com/...` URL。
+2. URL不会显示，这是正常现象。
+3. 按Enter。
+
+然后执行：
+
+```bash
+curl --fail --location --retry 3 --retry-delay 5 \
+  --output mid-linux-installer.deb "$MID_URL"
+unset MID_URL
+ls -lh mid-linux-installer.deb
+```
+
+下载约530 MB，可能需要几分钟。若粘贴失败，不要手工输入长URL，先停止并截图Bastion终端周围的工具栏。若出现 `401`、`403`或其他错误，只截图错误，不要截图URL。
