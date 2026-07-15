@@ -105,3 +105,5 @@ Get-Date
 
 重点保留 `Hash`、`Status: Valid` 和签名发行者的截图。
 
+Get-CimInstance Win32_Service -Filter "Name='snc_mid_P5230-ITOM1-MID'" |
+    Select-Object Name, DisplayName, StartName, State, StartMode
