@@ -720,3 +720,18 @@ GOODSIG _gpgbuilder
 ```
 
 只有看到 `GOODSIG` 才继续安装 MID Server。把完整结果发给我。
+签名验证成功：
+
+```text
+GOODSIG _gpgbuilder
+```
+
+签名指纹与刚才导入的 ServiceNow 公钥一致，安装包可以继续使用。请先保存这张截图作为证跡。
+
+现在安装 MID Server 的 Linux DEB 包：
+
+```bash
+sudo dpkg -i mid-linux-installer.deb
+```
+
+这一步只安装 MID Server 文件，不会立即完成实例连接配置。执行完成后把结果发给我。
