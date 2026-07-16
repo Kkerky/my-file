@@ -562,3 +562,16 @@ command -v dpkg-sig
 ```
 
 把两条命令的结果发给我。现在还不要安装 `.deb` 文件。
+
+结果很清楚：
+
+- `gpg` 已安装：`/usr/bin/gpg`
+- `dpkg-sig` 没有安装，所以没有显示路径
+
+需要先安装签名验证工具。请执行这一行：
+
+```bash
+sudo apt-get update
+```
+
+它只会更新 Ubuntu 的软件包清单，不会安装 MID Server。执行完成后把结果发给我，再进行下一步。
