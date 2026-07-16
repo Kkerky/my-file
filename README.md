@@ -526,3 +526,19 @@ find mid-signatures -maxdepth 2 -type f -print
 ```
 
 把 `unzip -l mid-signatures.zip` 的结果截图发来，我再确认下一步的公钥导入和 DEB 签名验证命令。
+
+建议一行一行执行：
+
+1. 输入后按 Enter：
+
+```bash
+unzip -o mid-signatures.zip
+```
+
+看到解压完成并回到命令提示符后，再输入：
+
+```bash
+ls -lh gpg-key.pem
+```
+
+两条命令都只是解压和确认文件，不会安装 MID Server。
