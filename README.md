@@ -911,3 +911,17 @@ sudo tail -n 100 /opt/servicenow/mid/agent/logs/agent0.log.0
 ```
 
 把结果发给我，重点看最后几十行是否有 `ERROR`、`WARN` 或验证相关信息。
+日志显示 MID Server 工作正常：
+
+- 持续发送 `HeartbeatProbe`
+- 持续向 ServiceNow 发送 ECC 消息
+- 没有明显的 `ERROR` 或连接失败
+- `MID server is not yet validated` 只是说明验证尚未完成，因此跳过了相关白名单更新
+
+现在筛选验证和异常信息：
+
+```bash
+sudo grep -i -E 'validat|error|exception|fail' /opt/servicenow/mid/agent/logs/agent0.log.0 | tail -n 50
+```
+
+把结果发给我。不要再次点击 `Validate`。
