@@ -677,3 +677,16 @@ curl --fail --location --output dpkg-sig.deb 'https://deb.debian.org/debian/pool
 ```
 
 下载完成后把画面发给我，我再确认文件后执行安装。
+文件类型确认正确：
+
+```text
+Debian binary package (format 2.0)
+```
+
+现在安装这个签名验证工具：
+
+```bash
+sudo apt install ./dpkg-sig.deb
+```
+
+它只安装 `dpkg-sig` 验证工具，不会安装或启动 MID Server。安装完成后把画面发给我。
