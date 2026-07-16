@@ -607,3 +607,16 @@ _gpgorigin
 ```
 
 暂时不要执行 `dpkg -i`。
+这次不是 `.deb` 的问题，而是系统没有安装 `ar` 工具。画面已经给出了建议：
+
+```text
+sudo apt install binutils
+```
+
+请执行：
+
+```bash
+sudo apt install -y binutils
+```
+
+安装完成后先把结果发给我。它只安装文件检查工具，不会安装 MID Server。
