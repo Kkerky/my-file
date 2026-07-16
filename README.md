@@ -586,3 +586,24 @@ sudo apt-get install -y dpkg-sig
 如果提示输入密码，请输入 Ubuntu 管理员账号的登录密码。输入时屏幕不会显示字符，这是正常现象。
 
 安装完成后先不要安装 MID Server，把结果截图发给我。
+安装失败的原因是：
+
+```text
+E: Unable to locate package dpkg-sig
+```
+
+这表示 Ubuntu 24.04 当前软件源中没有这个工具，不是 MID Server 安装包有问题。
+
+下一步先确认 `.deb` 文件内部是否包含 ServiceNow 的签名信息。执行：
+
+```bash
+ar t mid-linux-installer.deb
+```
+
+这是只读检查，不会安装任何内容。把结果发给我，重点看是否有类似：
+
+```text
+_gpgorigin
+```
+
+暂时不要执行 `dpkg -i`。
