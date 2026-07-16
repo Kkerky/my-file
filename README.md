@@ -882,3 +882,17 @@ sudo tail -n 100 /opt/servicenow/mid/agent/logs/wrapper.log
 ```
 
 把结果发给我。重点检查是否有连接、验证请求或异常信息。不要再次点击 `Validate`。
+从 `wrapper.log` 看，MID Server JVM 启动正常，没有连接失败或异常停止：
+
+- Wrapper 启动成功
+- Java 服务已启动
+- 没有 `ERROR`
+- 看到的内容只是 Java 弃用警告，不影响运行
+
+现在确认日志目录里是否还有其他文件：
+
+```bash
+sudo ls -la /opt/servicenow/mid/agent/logs
+```
+
+把结果发给我。`Validated` 卡住不一定是 Linux 服务问题，也可能是 ServiceNow 端的验证请求还没有完成。
