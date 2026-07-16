@@ -896,3 +896,18 @@ sudo ls -la /opt/servicenow/mid/agent/logs
 ```
 
 把结果发给我。`Validated` 卡住不一定是 Linux 服务问题，也可能是 ServiceNow 端的验证请求还没有完成。
+找到真正的 MID Server 应用日志了：
+
+```text
+agent0.log.0
+```
+
+文件大小约 `175 KB`，说明 MID Server 已经持续运行并写入日志。
+
+请读取末尾内容：
+
+```bash
+sudo tail -n 100 /opt/servicenow/mid/agent/logs/agent0.log.0
+```
+
+把结果发给我，重点看最后几十行是否有 `ERROR`、`WARN` 或验证相关信息。
