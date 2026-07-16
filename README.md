@@ -636,3 +636,12 @@ sudo apt install -y debsig-verify
 ```
 
 执行完成后把结果发给我。暂时不要运行 `dpkg -i`。
+`debsig-verify` 安装成功，且没有需要重启的服务。
+
+现在先尝试验证这个 DEB 的签名：
+
+```bash
+debsig-verify -v mid-linux-installer.deb
+```
+
+请把完整结果发给我。这个命令只验证签名，不会安装或启动 MID Server。
