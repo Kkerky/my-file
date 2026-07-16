@@ -766,3 +766,19 @@ sudo dpkg --force-depends --configure agent
 ```
 
 这一步会配置刚才已经解包的 MID Server 文件，不会重新下载。执行后把结果发给我。不要运行 `apt -f install`。
+配置命令已经继续执行，并且输出显示：
+
+```text
+MID Server has been installed
+MID Server can be configured using /agent/installer.sh
+```
+
+其中 `[[ : not found` 和 `This system supports neither RPM nor DEB` 是安装脚本使用了 Bash 语法，但 Ubuntu 默认用 `dash` 执行脚本导致的提示。现在先确认安装脚本是否实际存在。
+
+执行：
+
+```bash
+sudo ls -l /agent/installer.sh
+```
+
+如果能看到文件，再进入 MID Server 的实例连接配置。先不要直接执行安装脚本。
