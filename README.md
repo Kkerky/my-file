@@ -656,3 +656,24 @@ gpg --show-keys --with-fingerprint gpg-key.pem
 ```
 
 这是只读检查，不会导入或修改系统密钥。请把结果发给我，重点是完整的 `fingerprint` 行。不要执行 `dpkg -i`。
+公钥确认成功，身份是：
+
+```text
+ServiceNow, Inc. (Signing)
+```
+
+指纹：
+
+```text
+CBDE 8461 2594 7AF9 9D38 FF1C A401 1FF1 3EB2 8593
+```
+
+刚才的 `debsig-verify` 失败，是因为这个包使用的是 `_gpgbuilder` 签名格式，应该用 `dpkg-sig` 验证。Ubuntu 24.04 默认源没有这个工具。
+
+先下载验证工具到当前目录，暂时不要安装：
+
+```bash
+curl --fail --location --output dpkg-sig.deb 'https://deb.debian.org/debian/pool/main/d/dpkg-sig/dpkg-sig_0.13.1+nmu4_all.deb'
+```
+
+下载完成后把画面发给我，我再确认文件后执行安装。
