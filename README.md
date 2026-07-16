@@ -542,3 +542,23 @@ ls -lh gpg-key.pem
 ```
 
 两条命令都只是解压和确认文件，不会安装 MID Server。
+
+解压和文件确认都成功了：
+
+```text
+gpg-key.pem  1.2K
+```
+
+下一步先确认签名验证工具是否存在。请一行一行执行：
+
+```bash
+command -v gpg
+```
+
+再执行：
+
+```bash
+command -v dpkg-sig
+```
+
+把两条命令的结果发给我。现在还不要安装 `.deb` 文件。
