@@ -782,3 +782,12 @@ sudo ls -l /agent/installer.sh
 ```
 
 如果能看到文件，再进入 MID Server 的实例连接配置。先不要直接执行安装脚本。
+这个结果说明安装脚本确实没有被放置到 `/agent`，所以暂时不能继续配置 MID Server。
+
+下一步先查看 `.deb` 内部实际包含的路径：
+
+```bash
+dpkg-deb -c mid-linux-installer.deb | grep -E 'installer\.sh|agent/'
+```
+
+这是只读检查。把结果发给我后，我们再决定是修正安装脚本的执行方式，还是改用包内的正确目录。不要手动创建 `/agent`，也不要重新下载。
