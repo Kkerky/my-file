@@ -825,3 +825,20 @@ sudo /opt/servicenow/mid/agent/installer.sh
 脚本会进入 MID Server 配置向导。之后可能会要求输入 ServiceNow 实例地址、用户名、密码和 MID Server 名称。
 
 输入密码时不要截图，也不要把密码发给我。先把启动后的第一个提示画面发给我，我们逐项填写。
+安装成功，关键结果是：
+
+```text
+Created symlink ... mid_p5230_itom2.service
+Mid is running as a service successfully.
+PID: 9641
+```
+
+同时目录权限也已按要求调整为 `p5230admin`。空间不足警告没有阻止本次启动，但后续仍建议扩容磁盘。
+
+现在先确认 systemd 服务状态：
+
+```bash
+sudo systemctl status mid_p5230_itom2 --no-pager
+```
+
+把结果发给我，确认服务持续处于 `active (running)` 后，再去 ServiceNow 页面确认 MID Server 状态。
