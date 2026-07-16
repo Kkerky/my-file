@@ -791,3 +791,22 @@ dpkg-deb -c mid-linux-installer.deb | grep -E 'installer\.sh|agent/'
 ```
 
 这是只读检查。把结果发给我后，我们再决定是修正安装脚本的执行方式，还是改用包内的正确目录。不要手动创建 `/agent`，也不要重新下载。
+从这几张图可以确认，MID Server 文件实际位于：
+
+```text
+/opt/servicenow/mid/agent/
+```
+
+之前提示的 `/agent/installer.sh` 是安装脚本判断 Ubuntu 发行版失败后输出的错误路径，不能使用。不要移动目录，也不要创建 `/agent`。
+
+现在请查找实际的配置脚本：
+
+```bash
+sudo find /opt/servicenow/mid -maxdepth 3 -type f -name '*.sh' -print
+```
+
+把结果发给我。重点确认是否存在：
+
+```text
+/opt/servicenow/mid/agent/installer.sh
+```
