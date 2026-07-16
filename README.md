@@ -575,3 +575,14 @@ sudo apt-get update
 ```
 
 它只会更新 Ubuntu 的软件包清单，不会安装 MID Server。执行完成后把结果发给我，再进行下一步。
+`apt-get update` 已成功完成，软件包清单正常更新。
+
+现在安装签名验证工具：
+
+```bash
+sudo apt-get install -y dpkg-sig
+```
+
+如果提示输入密码，请输入 Ubuntu 管理员账号的登录密码。输入时屏幕不会显示字符，这是正常现象。
+
+安装完成后先不要安装 MID Server，把结果截图发给我。
