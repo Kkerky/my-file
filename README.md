@@ -620,3 +620,19 @@ sudo apt install -y binutils
 ```
 
 安装完成后先把结果发给我。它只安装文件检查工具，不会安装 MID Server。
+
+检查结果确认了：
+
+```text
+_gpgbuilder
+```
+
+这个条目就是 `.deb` 内嵌的签名数据。因为这里不是 `_gpgorigin`，应使用 `debsig-verify` 方式验证，而不是继续找 `dpkg-sig`。
+
+请执行：
+
+```bash
+sudo apt install -y debsig-verify
+```
+
+执行完成后把结果发给我。暂时不要运行 `dpkg -i`。
