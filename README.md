@@ -750,3 +750,19 @@ sudo dpkg -i mid-linux-installer.deb
 ```
 
 这一步只安装 MID Server 文件，不会立即完成实例连接配置。执行完成后把结果发给我。
+
+系统确认正常：
+
+```text
+Ubuntu GLIBC 2.39
+```
+
+它高于 MID Server 要求的 `glibc >= 2.17`。所以当前只是 DEB 的依赖名称与 Ubuntu 包管理器不匹配，实际运行库已经满足要求。
+
+现在用已确认的运行库版本强制完成 `agent` 包配置：
+
+```bash
+sudo dpkg --force-depends --configure agent
+```
+
+这一步会配置刚才已经解包的 MID Server 文件，不会重新下载。执行后把结果发给我。不要运行 `apt -f install`。
