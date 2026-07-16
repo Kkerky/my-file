@@ -700,3 +700,23 @@ gpg --import gpg-key.pem
 ```
 
 看到 `ServiceNow, Inc. (Signing)` 被导入后，把结果发给我。然后再执行最终的 DEB 签名验证。
+公钥导入成功，且关键 ID 与指纹一致：
+
+```text
+A4011FF13EB28593
+ServiceNow, Inc. (Signing)
+```
+
+现在执行最终签名验证：
+
+```bash
+dpkg-sig --verify mid-linux-installer.deb
+```
+
+正常结果应包含：
+
+```text
+GOODSIG _gpgbuilder
+```
+
+只有看到 `GOODSIG` 才继续安装 MID Server。把完整结果发给我。
