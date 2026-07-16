@@ -854,3 +854,18 @@ sudo tail -n 80 /opt/servicenow/mid/agent/logs/agent0.log
 ```
 
 把结果截图发给我。日志中如果出现账号、URL 或令牌，请先遮挡；不要重启 MID Server。
+这不是故障，命令只是提示：
+
+```text
+/opt/servicenow/mid/agent/logs/agent0.log 不存在
+```
+
+说明当前版本的日志目录不是这个路径。服务本身仍然是 `active (running)`。
+
+请执行下面的查找命令：
+
+```bash
+sudo find /opt/servicenow/mid -maxdepth 4 \( -type d -name logs -o -type f -name '*.log' \) -print
+```
+
+把结果发给我，我们再读取正确的日志文件。
