@@ -690,3 +690,13 @@ sudo apt install ./dpkg-sig.deb
 ```
 
 它只安装 `dpkg-sig` 验证工具，不会安装或启动 MID Server。安装完成后把画面发给我。
+
+`dpkg-sig` 已安装成功。末尾的 `_apt Permission denied` 是本地 `.deb` 位于用户目录时的常见提示，安装本身已完成。
+
+现在把 ServiceNow 公钥导入当前用户的 GPG 密钥环：
+
+```bash
+gpg --import gpg-key.pem
+```
+
+看到 `ServiceNow, Inc. (Signing)` 被导入后，把结果发给我。然后再执行最终的 DEB 签名验证。
