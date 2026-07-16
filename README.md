@@ -842,3 +842,15 @@ sudo systemctl status mid_p5230_itom2 --no-pager
 ```
 
 把结果发给我，确认服务持续处于 `active (running)` 后，再去 ServiceNow 页面确认 MID Server 状态。
+现在不建议继续重复点击 `Validate`。从列表看：
+
+- `Status = Up`：连接在线
+- `Validated = Validating`：验证请求仍未返回
+
+请在 Ubuntu VM 中执行：
+
+```bash
+sudo tail -n 80 /opt/servicenow/mid/agent/logs/agent0.log
+```
+
+把结果截图发给我。日志中如果出现账号、URL 或令牌，请先遮挡；不要重启 MID Server。
