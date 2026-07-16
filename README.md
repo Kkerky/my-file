@@ -645,3 +645,14 @@ debsig-verify -v mid-linux-installer.deb
 ```
 
 请把完整结果发给我。这个命令只验证签名，不会安装或启动 MID Server。
+这个结果暂时不能判定为“文件未签名”。
+
+原因是：`.deb` 中确实有 `_gpgbuilder` 签名数据，但 `debsig-verify` 还没有配置 ServiceNow 提供的公钥和验证策略，所以无法识别签名来源。
+
+先确认公钥指纹。执行：
+
+```bash
+gpg --show-keys --with-fingerprint gpg-key.pem
+```
+
+这是只读检查，不会导入或修改系统密钥。请把结果发给我，重点是完整的 `fingerprint` 行。不要执行 `dpkg -i`。
