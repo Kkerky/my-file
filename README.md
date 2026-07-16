@@ -810,3 +810,18 @@ sudo find /opt/servicenow/mid -maxdepth 3 -type f -name '*.sh' -print
 ```text
 /opt/servicenow/mid/agent/installer.sh
 ```
+确认成功，正确的配置脚本是：
+
+```text
+/opt/servicenow/mid/agent/installer.sh
+```
+
+现在执行：
+
+```bash
+sudo /opt/servicenow/mid/agent/installer.sh
+```
+
+脚本会进入 MID Server 配置向导。之后可能会要求输入 ServiceNow 实例地址、用户名、密码和 MID Server 名称。
+
+输入密码时不要截图，也不要把密码发给我。先把启动后的第一个提示画面发给我，我们逐项填写。
