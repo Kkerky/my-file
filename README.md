@@ -869,3 +869,16 @@ sudo find /opt/servicenow/mid -maxdepth 4 \( -type d -name logs -o -type f -name
 ```
 
 把结果发给我，我们再读取正确的日志文件。
+日志目录找到了，实际日志文件是：
+
+```text
+/opt/servicenow/mid/agent/logs/wrapper.log
+```
+
+请读取最近日志：
+
+```bash
+sudo tail -n 100 /opt/servicenow/mid/agent/logs/wrapper.log
+```
+
+把结果发给我。重点检查是否有连接、验证请求或异常信息。不要再次点击 `Validate`。
