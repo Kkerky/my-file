@@ -922,6 +922,11 @@ sudo tail -n 100 /opt/servicenow/mid/agent/logs/agent0.log.0
 
 ```bash
 sudo grep -i -E 'validat|error|exception|fail' /opt/servicenow/mid/agent/logs/agent0.log.0 | tail -n 50
+
+ServiceNow公式ドキュメントでは、WindowsサーバーをDiscoveryする場合、MID ServerはWindows Server上に構築する必要があります。
+
+https://www.servicenow.com/docs/r/servicenow-platform/mid-server/r_MIDServerSystemRequirements.html
+https://www.servicenow.com/docs/r/it-operations-management/discovery/r_PowerShellForDiscovery.html
 ```
 
 把结果发给我。不要再次点击 `Validate`。
