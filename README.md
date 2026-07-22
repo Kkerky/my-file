@@ -930,3 +930,36 @@ https://www.servicenow.com/docs/r/it-operations-management/discovery/r_PowerShel
 ```
 
 把结果发给我。不要再次点击 `Validate`。
+
+
+按当前 ServiceNow 官方文档，必须使用 **Windows MID Server** 的主要场景有：
+
+| 场景 | 是否需要 Windows MID |
+|---|---|
+| Windows 服务器 Discovery（WMI、WinRM、PowerShell） | **需要** |
+| Windows Server Cluster Discovery | **需要** |
+| Hyper-V Discovery | **需要**，因为需要 PowerShell |
+| Credential-less Discovery（Nmap） | **需要**，Nmap 官方仅支持安装在 Windows MID 上 |
+| Discovery Behavior：`Windows only (WMI)` | **需要** |
+| Discovery Behavior：`Windows, DNS, and WINS` | **需要** |
+
+此外，虽然不属于普通 Discovery：
+
+- Windows 设备的 Service Mapping Patterns：需要 Windows MID
+- Windows 设备的 Orchestration：需要 Windows MID
+- Service Graph Connector for SCCM：官方要求 Windows MID Server
+
+一般**不要求** Windows MID 的场景包括：
+
+- Linux/Unix Discovery：通过 SSH，Windows 或 Linux MID 都可以
+- SNMP 网络设备 Discovery
+- VMware vCenter/ESXi Discovery：当前官方文档没有要求必须使用 Windows MID
+
+官方参考：
+
+- [MID Server system requirements](https://www.servicenow.com/docs/r/servicenow-platform/mid-server/r_MIDServerSystemRequirements.html)
+- [Discovery behaviors](https://www.servicenow.com/docs/r/it-operations-management/discovery/c_DiscoveryBehaviors.html)
+- [PowerShell for Discovery and Service Mapping](https://www.servicenow.com/docs/r/it-operations-management/discovery/r_PowerShellForDiscovery.html)
+- [Hyper-V discovery](https://www.servicenow.com/docs/r/it-operations-management/itom-visibility/r_DiscoveryForHyperV.html)
+- [Credential-less discovery with Nmap](https://www.servicenow.com/docs/r/it-operations-management/discovery/nmap-credential-less-discovery.html)
+- [Configure Service Graph Connector for Microsoft SCCM](https://www.servicenow.com/docs/r/servicenow-platform/service-graph-connectors/configure-sccm-integration.html)
