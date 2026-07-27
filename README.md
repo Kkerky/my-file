@@ -963,3 +963,72 @@ https://www.servicenow.com/docs/r/it-operations-management/discovery/r_PowerShel
 - [Hyper-V discovery](https://www.servicenow.com/docs/r/it-operations-management/itom-visibility/r_DiscoveryForHyperV.html)
 - [Credential-less discovery with Nmap](https://www.servicenow.com/docs/r/it-operations-management/discovery/nmap-credential-less-discovery.html)
 - [Configure Service Graph Connector for Microsoft SCCM](https://www.servicenow.com/docs/r/servicenow-platform/service-graph-connectors/configure-sccm-integration.html)
+
+
+看到了。这是《通信要件》表。按照这个格式，**你当前 PoC 如果采用 vCenter Discovery，只需要追加下面这一行**，不要写成 MID Server → ESXi。
+
+## 当前 PoC：vCenter Discovery
+
+| 项目 | 记入内容 |
+|---|---|
+| 案件/プロジェクト名 | ServiceNow Discovery / MID Server |
+| 目的 | VMware vCenter経由のESXi / VM / Datastore Discovery |
+| 通信区分 | Inbound to vCenter |
+| 方向 | MID → vCenter |
+| 送元種別 | MID Server |
+| 送元IP/FQDN | `<MID Server IP>` |
+| 宛先種別 | VMware vCenter |
+| 宛先IP/FQDN | `<vCenter IP / FQDN>` |
+| プロトコル | TCP |
+| ポート | 443 |
+| URL/サービス名 | VMware vCenter API / HTTPS |
+| 対象OS | N/A（vCenter Server Appliance） |
+| 対象種別 | VMware vCenter |
+| 用途詳細 | ServiceNow DiscoveryがvCenter APIを利用し、ESXiホスト、VM、Datastore等の情報を取得 |
+| 必要理由 | VMware / ESXi Discovery検証のため |
+| 常時/一時 | 一時（PoC期間中） |
+| 暗号化 | HTTPS / TLS |
+| 認証方式 | VMware Credential（Read-only） |
+| 制限条件 | 送信元をMID Server IPに限定。宛先をvCenter IP/FQDNに限定 |
+| 備考 | vCenter管理下のESXi用。ESXi IPはDiscovery Scheduleに直接指定しない |
+
+### 只有 Standalone ESXi 时再追加第二行
+
+| 项目 | 记入内容 |
+|---|---|
+| 目的 | Standalone ESXi Discovery |
+| 通信区分 | Inbound to ESXi |
+| 方向 | MID → ESXi |
+| 送元種別 | MID Server |
+| 送元IP/FQDN | `<MID Server IP>` |
+| 宛先種別 | Standalone ESXi |
+| 宛先IP/FQDN | `<ESXi Host IP>` |
+| プロトコル | TCP |
+| ポート | 902 |
+| URL/サービス名 | ESXi IP Service |
+| 対象OS | ESXi |
+| 対象種別 | Standalone ESXi |
+| 用途詳細 | ServiceNow Discoveryによる独立ESXiホスト情報取得 |
+| 必要理由 | Standalone ESXi Discovery検証のため |
+| 常時/一時 | 一時（PoC期間中） |
+| 認証方式 | VMware Credential（Read-only） |
+| 制限条件 | 送信元をMID Server IPに限定。対象ESXi IPを限定 |
+| 備考 | vCenter管理下のESXiでは使用しない |
+
+**本次应填写：**
+
+```text
+MID Server → vCenter / TCP 443
+```
+
+只有没有 vCenter、直接发现独立 ESXi 时，才填写：
+
+```text
+MID Server → ESXi / TCP 902
+```
+
+官方参考：
+
+- [ServiceNow VMware vCenter Discovery](https://www.servicenow.com/docs/r/xanadu/it-operations-management/itom-visibility/c_DiscoveryForVMwareVCenter.html)
+- [ServiceNow Standalone ESXi Discovery](https://www.servicenow.com/docs/r/xanadu/it-operations-management/itom-visibility/StandaloneESXiDiscovery.html)
+- [Broadcom: Connecting to vCenter Server Through a Firewall](https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/8-0/vsphere-security/securing-vsphere-networking/securing-the-network-with-firewalls/connecting-to-vcenter-server-through-a-firewall.html)
