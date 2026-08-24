@@ -1,0 +1,3 @@
+*.sh text eol=lf
+SHA256SUMS text eol=lf
+config/01_servicenow text eol=lf

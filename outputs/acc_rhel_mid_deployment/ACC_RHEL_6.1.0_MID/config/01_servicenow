@@ -1,0 +1,8 @@
+# Baseline ACC sudo permissions for Linux inventory collection.
+# Review and approve this policy according to the customer's security standard.
+User_Alias ACC_USERS = servicenow
+Cmnd_Alias ACC_CMD = /usr/sbin/dmidecode -s baseboard-serial-number, /usr/sbin/dmidecode -s chassis-serial-number, /usr/sbin/dmidecode -s system-serial-number, /usr/sbin/dmidecode -s system-uuid, /usr/sbin/ss -tanp, /usr/bin/systemctl start acc, /usr/bin/systemctl stop acc, /usr/bin/rpm -Uv /var/cache/servicenow/agent-client-collector/upgrade/agent-client-collector-upgrade.rpm
+Cmnd_Alias ACC_CMD_SETENV = /usr/bin/netstat -ltnup, /usr/bin/ls -l /proc/*, /usr/bin/cat /proc/*
+ACC_USERS ALL = (root) NOPASSWD: ACC_CMD
+ACC_USERS ALL = (root) NOPASSWD: SETENV: ACC_CMD_SETENV
+Defaults:ACC_USERS !requiretty

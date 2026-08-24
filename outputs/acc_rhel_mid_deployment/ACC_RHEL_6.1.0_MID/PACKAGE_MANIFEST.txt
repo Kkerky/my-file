@@ -1,0 +1,8 @@
+Package: ACC_RHEL_6.1.0_MID
+Purpose: Manual ACC deployment to RHEL-compatible x86_64 hosts through a MID Server
+ACC version: 6.1.0
+RPM file: agent-client-collector-6.1.0-x86_64.rpm
+RPM SHA-256: CF0A4A4EAB70CFF19E03BF59A9CAD68FDA75E53F57EA81915001B39109C4D221
+API key included: No
+MID Server URL included: No
+Native MECM Linux deployment: No
