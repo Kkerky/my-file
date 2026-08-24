@@ -101,6 +101,52 @@ CPU：x64
 
 8) 完成创建后，打开 Deployment Type 的 Properties，并调整以下设置。
 
+   需要调整的页面和项目如下。安装命令中的 <MID_FQDN> 和 <ACC_API_KEY>
+   必须替换为客户环境的实际值。
+
+   [Content 页面]
+   Content location：
+   \\MECMSource\Applications\ServiceNow\ACC\6.1.0\
+   请确认该目录中同时存在 MSI、Install-ACC.ps1、Uninstall-ACC.ps1 和 Verify-ACC.ps1。
+
+   [Programs 页面]
+   Installation program：
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Install-ACC.ps1" -MidUrl "wss://<MID_FQDN>:8800/ws/events" -ApiKey "<ACC_API_KEY>" -AllowList True
+
+   Uninstall program：
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Uninstall-ACC.ps1"
+
+   [Detection Method 页面]
+   Setting type：Windows Installer
+   ProductCode：{12D4F26D-0C4C-429F-ADD9-DFF78E8192EE}
+   ProductVersion：Greater than or equal to 6.1.0.2
+
+   [User Experience 页面]
+   Installation behavior：Install for system
+   Logon requirement：Whether or not a user is logged on
+   Installation program visibility：Hidden
+   Maximum allowed run time：15 minutes
+   Estimated installation time：5 minutes
+   Post-installation behavior：Determine behavior based on return codes
+
+   [Requirements 页面]
+   Category：Device
+   Condition：Operating system
+   Rule type：Value
+   Operator：One of
+   Value：仅选择经确认属于当前 ACC 支持范围的 64-bit Windows 版本
+
+   [Return Codes 页面]
+   0：Success (no reboot)
+   1707：Success (no reboot)
+   3010：Soft reboot
+   1641：Hard reboot
+   1618：Fast retry
+   使用 MSI 自动创建 Deployment Type 时，MECM 通常会自动生成这些默认值；
+   此处以确认类型正确为主，不要删除 1707 和 1618。
+
+   各设置的说明、API Key 安全注意事项和正式环境方式，请继续参照第 7～10 节。
+
 7. 安装和卸载命令
 -----------------
 
@@ -131,11 +177,14 @@ Logon requirement：Whether or not a user is logged on
 Installation program visibility：Hidden
 Maximum allowed run time：15 minutes（PoC建议值）
 Estimated installation time：5 minutes（PoC建议值）
+Post-installation behavior：Determine behavior based on return codes
 
-返回代码：
+确认 Return Codes 页保留 MECM 为 MSI 自动生成的默认返回代码：
 - 0：成功
+- 1707：成功
 - 3010：成功，需要软重启
 - 1641：成功，已触发重启
+- 1618：已有另一个安装正在执行，稍后重试
 
 脚本会把 Windows Installer 日志保存到：
 C:\ProgramData\ServiceNow\ACC-Deployment-Logs\ACC_Install.log
@@ -156,8 +205,11 @@ ProductCode：
 10. Requirements设置
 --------------------
 
-- Operating system architecture：64-bit
-- 操作系统版本：只选择客户已经确认属于当前 ACC 支持范围的 Windows 版本。
+- Category：Device
+- Condition：Operating system
+- Rule type：Value
+- Operator：One of
+- Value：只选择客户已经确认属于当前 ACC 支持范围的 64-bit Windows 版本。
 - Disk space：保留足够空间用于 MSI、ACC 本体、缓存和日志。
 - 网络：目标机可访问 MID Server WebSocket。
 

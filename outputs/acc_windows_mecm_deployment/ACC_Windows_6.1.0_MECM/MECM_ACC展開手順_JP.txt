@@ -103,6 +103,54 @@ CPU：x64
 
 8) 作成後、Deployment Type の Properties を開き、以下の設定を調整します。
 
+   調整対象の画面および設定値は以下のとおりです。インストールコマンド内の
+   <MID_FQDN> および <ACC_API_KEY> は、お客様環境の実値に置き換えてください。
+
+   [Content 画面]
+   Content location：
+   \\MECMSource\Applications\ServiceNow\ACC\6.1.0\
+   当該フォルダーに MSI、Install-ACC.ps1、Uninstall-ACC.ps1、および
+   Verify-ACC.ps1 がすべて格納されていることを確認してください。
+
+   [Programs 画面]
+   Installation program：
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Install-ACC.ps1" -MidUrl "wss://<MID_FQDN>:8800/ws/events" -ApiKey "<ACC_API_KEY>" -AllowList True
+
+   Uninstall program：
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Uninstall-ACC.ps1"
+
+   [Detection Method 画面]
+   Setting type：Windows Installer
+   ProductCode：{12D4F26D-0C4C-429F-ADD9-DFF78E8192EE}
+   ProductVersion：Greater than or equal to 6.1.0.2
+
+   [User Experience 画面]
+   Installation behavior：Install for system
+   Logon requirement：Whether or not a user is logged on
+   Installation program visibility：Hidden
+   Maximum allowed run time：15 minutes
+   Estimated installation time：5 minutes
+   Post-installation behavior：Determine behavior based on return codes
+
+   [Requirements 画面]
+   Category：Device
+   Condition：Operating system
+   Rule type：Value
+   Operator：One of
+   Value：現行 ACC のサポート対象として確認済みの 64-bit Windows バージョンのみを選択
+
+   [Return Codes 画面]
+   0：Success (no reboot)
+   1707：Success (no reboot)
+   3010：Soft reboot
+   1641：Hard reboot
+   1618：Fast retry
+   MSI から Deployment Type を自動作成した場合、通常は MECM がこれらの既定値を
+   自動生成します。種類が正しいことを確認し、1707 と 1618 は削除しないでください。
+
+   各設定の説明、API Key のセキュリティ上の注意事項、および本番環境向けの方式は、
+   引き続き第 7～10 章を参照してください。
+
 7. インストール／アンインストールコマンド
 ---------------------------------------
 
@@ -133,11 +181,14 @@ Logon requirement：Whether or not a user is logged on
 Installation program visibility：Hidden
 Maximum allowed run time：15 minutes（PoC 推奨値）
 Estimated installation time：5 minutes（PoC 推奨値）
+Post-installation behavior：Determine behavior based on return codes
 
-戻り値：
+Return Codes 画面に、MECM が MSI 用として自動生成する既定の戻り値が保持されていることを確認します。
 - 0：成功
+- 1707：成功
 - 3010：成功、ソフトリブートが必要
 - 1641：成功、リブート開始済み
+- 1618：別のインストールが実行中のため、後で再試行
 
 Windows Installer ログ：
 C:\ProgramData\ServiceNow\ACC-Deployment-Logs\ACC_Install.log
@@ -158,8 +209,11 @@ Create Application で MSI を自動読み取りした場合、MECM は通常 Pr
 10. Requirements設定
 --------------------
 
-- Operating system architecture：64-bit
-- OS version：現行 ACC のサポート対象であることをお客様が確認した Windows バージョンのみを選択
+- Category：Device
+- Condition：Operating system
+- Rule type：Value
+- Operator：One of
+- Value：現行 ACC のサポート対象であることをお客様が確認した 64-bit Windows バージョンのみを選択
 - Disk space：MSI、ACC 本体、キャッシュ、ログ用の空き容量を確保
 - Network：対象端末から MID Server WebSocket へ接続可能
 
