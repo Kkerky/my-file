@@ -1,0 +1,256 @@
+ServiceNow ACC 6.1.0 Windows版 MECM自动部署手顺
+================================================
+
+1. 结论
+-------
+
+Windows版 ACC 可以使用 MECM 自动安装。
+
+原因是目标 Windows 设备上存在 MECM Client，MECM 可以把 MSI 和脚本下载到本地缓存，并在 SYSTEM 权限下执行无人值守安装。安装完成后，ACC 再通过 WebSocket 主动连接 MID Server。
+
+本安装包没有写入 MID Server 地址和 ACC API Key。实际部署时必须由客户在 MECM 中设置这些环境相关信息。
+
+2. 本包内容
+-----------
+
+- agent-client-collector-6.1.0-windows-x64.msi
+  ServiceNow 官方 Windows x64 MSI。
+
+- Install-ACC.ps1
+  校验 MSI 哈希和 ServiceNow 数字签名，执行静默安装，配置 MID Server，并确认服务状态。
+
+- Uninstall-ACC.ps1
+  通过 MSI ProductCode 静默卸载 ACC。
+
+- Verify-ACC.ps1
+  检查 MSI 版本、AgentClientCollector 服务和主要配置。
+
+- PACKAGE_INFO.txt
+  MSI 产品信息和检测值。
+
+- SHA256SUMS.txt
+  MSI 文件完整性校验值。
+
+3. 已确认的 MSI 信息
+-------------------
+
+产品名称：Agent Client Collector
+发布者：ServiceNow, Inc.
+显示版本：6.1.0.2
+ProductCode：{12D4F26D-0C4C-429F-ADD9-DFF78E8192EE}
+UpgradeCode：{29B5AA66-46B3-4676-8D67-2F3FB31CC549}
+数字签名：有效，签名者为 ServiceNow Inc.
+CPU：x64
+
+4. 部署前必须准备的信息
+---------------------
+
+1) MID Server WebSocket URL
+   例：wss://mid01.example.local:8800/ws/events
+
+2) ACC API Key
+   必须使用 MID Server WebSocket 对应的有效 API Key。
+
+3) 网络连通性
+   目标 Windows 设备必须可以访问 MID Server 的 WebSocket 端口。默认常见值为 TCP 8800，实际以 MID Server 配置为准。
+
+4) MECM 基础条件
+   - 目标设备已安装并正常连接 MECM Client。
+   - MECM Distribution Point 可以向目标设备提供内容。
+   - MECM 执行账号具有本机 SYSTEM 权限。
+
+5) ServiceNow 端条件
+   - MID Server 已正常运行。
+   - MID Server 的 ACC Web Server/Listener 已启用。
+   - API Key 有效。
+   - 使用 wss 时，Windows 设备信任 MID Server 证书。
+
+5. MECM内容源准备
+----------------
+
+1) 把 ACC_Windows_6.1.0_MECM 文件夹复制到 MECM Content Source 的 UNC 路径。
+
+   示例：
+   \\MECMSource\Applications\ServiceNow\ACC\6.1.0\
+
+2) 不要把实际 API Key 保存到此共享文件夹、脚本或 Git 中。
+
+3) 确认 MECM Site Server 和 Distribution Point 对内容源具有读取权限。
+
+6. 在MECM中创建Application
+--------------------------
+
+1) 打开 MECM Console。
+
+2) 进入：
+   Software Library
+   -> Application Management
+   -> Applications
+
+3) 选择 Create Application。
+
+4) 选择 Automatically detect information about this application from installation files。
+
+5) Type 选择 Windows Installer (*.msi file)。
+
+6) Location 指定 MSI 的 UNC 路径，例如：
+   \\MECMSource\Applications\ServiceNow\ACC\6.1.0\agent-client-collector-6.1.0-windows-x64.msi
+
+7) 建议 Application 名称：
+   ServiceNow Agent Client Collector 6.1.0
+
+8) 完成创建后，打开 Deployment Type 的 Properties，并调整以下设置。
+
+7. 安装和卸载命令
+-----------------
+
+PoC快速验证方式：
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Install-ACC.ps1" -MidUrl "wss://<MID_FQDN>:8800/ws/events" -ApiKey "<ACC_API_KEY>" -AllowList True
+
+卸载命令：
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Uninstall-ACC.ps1"
+
+注意：
+PoC快速方式会把 API Key 设置在 MECM Deployment Type 的命令中。拥有 MECM 管理权限的人可能看到该值；在特定 Windows Installer Debug Policy 下，命令行机密值也可能写入日志。因此只建议使用专用 PoC Key，并在验证后轮换或废止。
+
+生产环境推荐方式：
+
+由客户的安全机制把 API Key 临时保存到目标机的受限文件中，仅允许 SYSTEM 和 Administrators 读取，然后执行：
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Install-ACC.ps1" -MidUrl "wss://<MID_FQDN>:8800/ws/events" -ApiKeyFile "C:\ProgramData\Company\Secure\acc-api-key.txt" -AllowList True
+
+安装结束后，应由负责该安全机制的处理删除临时 Key 文件。不要把 Key 文件放进 MECM Content Source 或本安装包。
+
+8. Deployment Type设置
+----------------------
+
+Installation behavior：Install for system
+Logon requirement：Whether or not a user is logged on
+Installation program visibility：Hidden
+Maximum allowed run time：15 minutes（PoC建议值）
+Estimated installation time：5 minutes（PoC建议值）
+
+返回代码：
+- 0：成功
+- 3010：成功，需要软重启
+- 1641：成功，已触发重启
+
+脚本会把 Windows Installer 日志保存到：
+C:\ProgramData\ServiceNow\ACC-Deployment-Logs\ACC_Install.log
+
+9. Detection Method设置
+-----------------------
+
+Detection Method 选择 Windows Installer。
+
+ProductCode：
+{12D4F26D-0C4C-429F-ADD9-DFF78E8192EE}
+
+建议同时确认 ProductVersion 大于等于：
+6.1.0.2
+
+如果使用 Create Application 自动读取 MSI，MECM 通常会自动生成 ProductCode 检测条件，但仍必须人工确认值是否与上述内容一致。
+
+10. Requirements设置
+--------------------
+
+- Operating system architecture：64-bit
+- 操作系统版本：只选择客户已经确认属于当前 ACC 支持范围的 Windows 版本。
+- Disk space：保留足够空间用于 MSI、ACC 本体、缓存和日志。
+- 网络：目标机可访问 MID Server WebSocket。
+
+不要只根据文件名推断所有 Windows 版本都受支持。正式部署范围应以当前 ServiceNow ACC System Requirements 为准。
+
+11. 分发和部署顺序
+-----------------
+
+1) 将 Application 内容 Distribute Content 到目标 Distribution Point。
+
+2) 确认 Content Status 为 Success。
+
+3) 创建 1至5 台设备的 PoC Collection。
+
+4) 首先将 Deployment Purpose 设置为 Available，人工验证安装。
+
+5) 验证成功后，再对小范围 Collection 设置为 Required。
+
+6) 观察 2至3 个工作日的安装成功率、ACC 数据采集和 ServiceNow 实例负载后，再扩大范围。
+
+ServiceNow 官方建议渐进部署，整体速度不得超过每小时 5,000 个 Agent。
+
+12. 安装后验证
+-------------
+
+在目标 Windows 设备上以管理员权限执行：
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Verify-ACC.ps1"
+
+检查项目：
+
+1) Programs and Features 中存在 Agent Client Collector 6.1.0.2。
+
+2) Windows 服务 AgentClientCollector 为 Running。
+
+3) 配置文件存在：
+   C:\ProgramData\ServiceNow\agent-client-collector\config\acc.yml
+
+4) ACC 日志：
+   C:\ProgramData\ServiceNow\agent-client-collector\log\acc.log
+
+5) MECM 客户端日志：
+   C:\Windows\CCM\Logs\AppDiscovery.log
+   C:\Windows\CCM\Logs\AppEnforce.log
+
+6) ServiceNow 端确认该 Agent 已连接，并确认目标 CI/数据按照预期更新。
+
+仅看到 MSI 安装成功或 Windows 服务 Running，还不能证明 ServiceNow 端的数据采集已成功。
+
+13. 失败时回退
+-------------
+
+通过 MECM 执行卸载命令，或在管理员 PowerShell 中执行：
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Uninstall-ACC.ps1"
+
+卸载日志：
+C:\ProgramData\ServiceNow\ACC-Deployment-Logs\ACC_Uninstall.log
+
+卸载完成后，确认 ProductCode 已消失且 AgentClientCollector 服务不存在。是否删除残留配置、缓存和日志，应根据客户的证据保留和再安装策略另行决定，本脚本不会主动删除这些业务数据。
+
+14. 服务账号说明
+----------------
+
+默认情况下不指定 LOCALUSERNAME，由 ServiceNow MSI 创建本地 servicenow 用户并使用随机密码运行服务。
+
+若客户安全规定禁止该本地账号，可以在安装命令中增加以下参数之一：
+
+    -ServiceAccount LOCALSERVICE
+
+或：
+
+    -ServiceAccount SYSTEM
+
+SYSTEM 权限较高，不应仅为了方便而默认采用。最终账号方式必须由 Windows、安全及 ServiceNow 团队共同确认，并验证目标 ACC 功能所需权限。
+
+15. 官方参考资料
+----------------
+
+ServiceNow：Install the Agent Client Collector on a Windows machine using silent installation
+https://www.servicenow.com/docs/r/xanadu/it-operations-management/agent-client-collector/acc-windows-install-silent.html
+
+ServiceNow：Agent Client Collector deployment checklist
+https://www.servicenow.com/docs/r/it-operations-management/agent-client-collector/acc-deployment-checklist.html
+
+ServiceNow：Agent Client Collector planning checklist
+https://www.servicenow.com/docs/r/it-operations-management/agent-client-collector/acc-planning-checklist.html
+
+Microsoft：Create and deploy an application with Configuration Manager
+https://learn.microsoft.com/en-us/intune/configmgr/apps/get-started/create-and-deploy-an-application
+
+Microsoft：Create applications in Configuration Manager
+https://learn.microsoft.com/en-us/intune/configmgr/apps/deploy-use/create-applications
+
+Microsoft：MsiHiddenProperties property
+https://learn.microsoft.com/en-us/windows/win32/msi/msihiddenproperties

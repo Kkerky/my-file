@@ -1,0 +1,12 @@
+Package name: ACC_Windows_6.1.0_MECM
+Purpose: Automated ServiceNow ACC installation on MECM-managed 64-bit Windows devices
+MSI file: agent-client-collector-6.1.0-windows-x64.msi
+MSI display name: Agent Client Collector
+MSI manufacturer: ServiceNow, Inc.
+MSI ProductVersion: 6.1.0.2
+MSI ProductCode: {12D4F26D-0C4C-429F-ADD9-DFF78E8192EE}
+MSI UpgradeCode: {29B5AA66-46B3-4676-8D67-2F3FB31CC549}
+MSI SHA-256: E46BC617FF0C326A170D35BCCE29FC732E886B8B32B4765F46511A299AD8E90D
+MSI digital signature: Valid; signer ServiceNow Inc.
+MID Server URL included: No
+ACC API Key included: No

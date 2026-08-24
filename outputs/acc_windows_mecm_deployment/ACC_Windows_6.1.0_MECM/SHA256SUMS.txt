@@ -1,0 +1,1 @@
+e46bc617ff0c326a170d35bcce29fc732e886b8b32b4765f46511a299ad8e90d  agent-client-collector-6.1.0-windows-x64.msi
