@@ -1,125 +1,1034 @@
+下面是日本人会议用的日语版，可以直接当成你的应答备忘。
 
-## 3. 実際に利用する可能性があるケース
+**冒頭説明**
+本日の目的は、ServiceNow Discovery / ACC の事前検証に向けて、対象範囲、通信要件、認証情報、影響範囲を確認することです。  
+本番展開の承認ではなく、まずは限定した環境で有効性と影響範囲を確認する位置づけです。
 
-### ケース1：顧客が独自開発したアプリケーション
+**想定QA**
+1. **今回、NW部門に依頼したいことは何ですか？**  
+検証対象に到達可能な MID Server の構成確認、必要な通信許可、認証情報の提供または調整、検証対象範囲の確認をお願いしたいです。
 
-顧客が社内向けに開発した`ABC Order Server`というアプリケーションを使用しているとします。
+2. **ServiceNow から直接社内NWをスキャンするのですか？**  
+いいえ。基本的には社内側に配置した MID Server 経由で Discovery を実施します。ServiceNow クラウド側から社内環境へ直接インバウンド接続する構成ではありません。
 
-このアプリケーションには、次のような特徴があります。
+3. **MID Server はどこに配置する想定ですか？**  
+検証対象へ到達可能な場所に配置する必要があります。今回の検証では、Yokohama DC または Azure 検証環境に配置する想定ですが、実際の配置場所は対象NWやFW経路を確認したうえで決めます。
 
-- TCPポート：`18080`
-- プロセス名：`abc_order`
-- 設定ファイル：`/opt/abc/conf/app.properties`
-- バージョン情報：独自コマンドから取得
+4. **スキャンによる業務影響はありますか？**  
+Discovery は基本的に情報取得が目的であり、対象機器の設定変更は行いません。ただし、NW通信や認証アクセスは発生するため、対象範囲・時間帯・並列数を限定して小さく検証します。
 
-ServiceNowに対応するOOTB Patternがない場合は、新しいApplication Patternを作成します。
+5. **FWや監視でアラートが出る可能性はありますか？**  
+可能性はあります。そのため、MID Server の送信元IP、対象IPレンジ、実施時間、利用ポートを事前に共有し、監視・セキュリティ側でも把握できるようにします。
 
-TCPポート18080を確認
-        ↓
-abc_orderプロセスを特定
-        ↓
-起動コマンドと設定ファイルを解析
-        ↓
-バージョンとインストールパスを取得
-        ↓
-ABC Order ServerのApplication CIを作成・更新
+6. **Credential-less Discovery と Credential Discovery の違いは何ですか？**  
+Credential-less は主にIP存在確認やポート確認で、取得できる情報は限定的です。Credential Discovery は WinRM、SSH、SNMP、API などの認証情報を使って、OS、機器情報、ソフトウェア、関係性などをより正確に取得します。
+
+7. **なぜ認証情報が必要ですか？**  
+認証情報がない場合、取得できる情報が限定され、CMDB上で正確なCIとして管理しにくくなります。検証では最小権限・読み取り権限を前提に、対象範囲を限定して利用します。
+
+8. **Windows Discovery では何を使いますか？**  
+基本的には WinRM を推奨します。通信ポートは TCP 5985 または 5986 です。WMI/DCOM は TCP 135 と動的RPCポートが必要になるため、FW許可範囲が広くなりやすく、現時点では非推奨です。
+
+9. **Linux Discovery では何が必要ですか？**  
+MID Server から対象Linuxサーバへ SSH 接続します。通常は TCP 22 と SSH Credential が必要です。権限範囲は取得対象に応じて最小権限で確認します。
+
+10. **Palo Alto / FortiGate はどう検証しますか？**  
+NW機器については、機器種別ごとに SNMP、SSH、API、HTTPS など必要な方式が異なるため、Palo Alto / FortiGate については別途、管理方式・必要ポート・読み取り権限を確認します。現時点では詳細確認事項として扱います。
+
+11. **ESXi / VMware はどう検出しますか？**  
+VMware 環境は、可能であれば vCenter の管理API経由で検出します。MID Server から vCenter にアクセスし、ESXi Host、VM、Datastore、Network などの情報を取得します。vCenter がない場合は、Standalone ESXi に直接アクセスする方式も検討します。
+
+12. **vCenter / ESXi で必要な通信は何ですか？**  
+一般的には MID Server から vCenter または ESXi へ TCP 443 を利用します。認証は VMware Credential を使用し、可能であれば read-only 権限を前提にします。実際のポートや権限は環境設定に応じて確認が必要です。
+
+13. **ACC は何ですか？**  
+ACC は Agent Client Collector の略で、対象サーバに Agent を導入して情報を収集する方式です。MID Server からリモートで取得する Discovery と異なり、Agent 側から情報収集するため、継続的な収集や一部NW制約がある環境で有効です。
+
+14. **ACC で必要な通信は何ですか？**  
+現時点の想定では、ACC Agent から MID Server への通信として TCP 8800 が必要です。また、名前解決のため DNS 通信も必要です。正式な通信要件は実際の構成に合わせて確認します。
+
+15. **Azure / AWS Cloud Discovery では何が必要ですか？**  
+Azure は Tenant ID、Subscription ID、Client ID、Client Secret が必要です。AWS は Account ID、Access Key / Secret Access Key または IAM Role が必要です。いずれも対象Subscription / Accountを限定し、読み取り権限を前提とします。
+
+16. **他部門や他社の資産まで検出される可能性はありますか？**  
+対象範囲は IP Range、Subscription、Account、Tag などで限定します。ただし、共有DCや共有Azure環境の場合は境界確認が重要なため、どの範囲を対象にするか事前に確認します。
+
+17. **Service Mapping は今回の対象ですか？**  
+現時点では、主目的は Discovery / ACC によるIT資産の可視化とCMDB登録です。Service Mapping は後続フェーズの検討項目と理解しています。今回のJuly-Sep検証の主対象ではない想定です。
+
+18. **検証完了の判断基準は何ですか？**  
+限定した対象に対して、CIが正しく作成・更新されること、NWや対象システムへの大きな影響がないこと、必要な通信・認証・運用手順が整理できることを確認します。
+
+**困った時の安全な言い方**
+- `この点は機器種別ごとに条件が異なるため、持ち帰って確認します。`
+- `本日は本番展開の承認ではなく、事前検証の前提確認です。`
+- `対象範囲、通信経路、認証情報、実施時間を限定して検証します。`
+- `正式なポート・権限は、対象機器と管理方式を確認したうえで整理します。`
+- `現時点では仮定であり、各システムオーナーおよびNW担当と確認します。`
+
+
+剪贴板已经可以使用，安装包也确认完整落盘：
+
+- 文件：`mid-windows-installer.australia-02-11-2026__patch3-hotfix1-06-18-2026_06-19-2026_0938.windows.x86-64.msi`
+- 大小：`562,954,752 bytes`
+- 时间：`2026/07/15 04:32:47 AM`，仍是 UTC
+
+当前左下角显示 `>>`，说明 PowerShell 还处于多行命令等待状态，SHA-256 和签名结果没有正常显示。先按 `Ctrl+C` 返回正常的 `PS C:\...>` 提示符，再逐行执行：
+
+```powershell
+$mid = Get-ChildItem "$env:USERPROFILE\Downloads\mid-windows-installer*" | Select-Object -First 1
 ```
 
-### ケース2：OOTB Patternがない製品を使用している場合
+```powershell
+Get-FileHash $mid.FullName -Algorithm SHA256 | Format-List Algorithm,Hash,Path
+```
 
-顧客が、特定地域のベンダーが提供するミドルウェアや、利用者の少ない製品を使用している場合があります。
+```powershell
+$sig = Get-AuthenticodeSignature $mid.FullName
+```
 
-ServiceNowのAvailable Patternsに対象製品が存在しない場合は、以下の情報を組み合わせて新しいPatternを作成します。
+```powershell
+$sig | Format-List Status,StatusMessage
+```
 
-- リスニングポート
-- プロセス名
-- 製品固有のコマンド
-- 設定ファイル
-- インストールパス
-- バージョン情報
+```powershell
+$sig.SignerCertificate | Format-List Subject,Issuer,NotAfter,Thumbprint
+```
 
-これにより、通常のDiscoveryでは識別できない製品をApplication CIとしてCMDBに登録できます。
+另外，执行安装前把时区改为日本：
 
-### ケース3：OOTB Patternはあるが、顧客環境の構成が異なる場合
+```powershell
+Set-TimeZone -Id "Tokyo Standard Time"
+Get-TimeZone
+Get-Date
+```
 
-例えば、OOTB Patternが次の情報を使用してApacheを識別するとします。
+重点保留 `Hash`、`Status: Valid` 和签名发行者的截图。
+
+Get-CimInstance Win32_Service -Filter "Name='snc_mid_P5230-ITOM1-MID'" |
+    Select-Object Name, DisplayName, StartName, State, StartMode
+
+    Get-LocalUser -Name "svc_mid_p5230" |
+  Select-Object Name, Enabled, PasswordExpires, PasswordLastSet
+  getent hosts hitachiopdev.service-now.com
+curl -I --connect-timeout 10 https://hitachiopdev.service-now.com
+
+时区设置成功。第一次红色错误只是把 `timezone` 输入成了 `tiemzone`，第二次命令正确执行，不影响系统。
+
+当前结果：
+
+- Time zone：`Asia/Tokyo (JST, +0900)`
+- System clock synchronized：`yes`
+- NTP service：`active`
+- Local time：JST
+
+下一步先测试 Linux MID 到公司 ServiceNow Dev 实例的 DNS 和 HTTPS 通信：
+
+```bash
+getent hosts hitachiopdev.service-now.com
+curl -I --connect-timeout 10 https://hitachiopdev.service-now.com
+```
+
+`curl` 返回 `HTTP 200`、`302`、`401` 或 `403` 都可以证明 HTTPS 已连通；重点是不能出现 DNS、timeout 或 certificate 错误。执行后截图发给我。
+
+ServiceNow Dev 实例通信正常：
+
+- DNS：`hitachiopdev.service-now.com → 149.96.198.119`
+- HTTPS：`HTTP/1.1 200 OK`
+- TLS/证书：没有错误
+- 连接未超时
+
+这证明 ITOM2 Subnet 能通过公司网络访问 ServiceNow 实例。
+
+下一步验证 MID 安装包下载地址：
+
+```bash
+getent hosts install.service-now.com
+curl -I --connect-timeout 10 https://install.service-now.com
+```
+
+返回 `200`、`301/302`、`401` 或 `403` 都表示网络已连通。重点确认没有 DNS、timeout、proxy 或 certificate 错误。执行后截图发给我。
+
+`install.service-now.com` 通信完全正常：
+
+- DNS：`149.96.6.98`
+- HTTPS：`HTTP/1.1 200 OK`
+- 无 timeout、proxy 或 certificate 错误
+
+说明 Linux VM 可以直接访问 MID Server 安装包站点。
+
+安装前还需要确认官方要求的证书吊销检查地址，执行：
+
+```bash
+curl -I --connect-timeout 10 http://ocsp.digicert.com
+curl -I --connect-timeout 10 http://ocsp.entrust.net
+```
+
+OCSP 使用 HTTP 80 是正常设计。返回 `200`、`301/302`、`400`、`403` 或 `404` 都可视为网络可达；重点是不能出现 DNS 失败或 timeout。执行后截图发给我。
+
+很好，说明Ubuntu可以直接从ServiceNow官方站点拉取安装包，无需通过Bastion上传本地文件。
+
+完整URL不要发给我，也不要截图。先保持记事本中的链接不变。
+
+现在进入 `P5230-ITOM2-MID` 的Bastion SSH终端，只执行：
+
+```bash
+mkdir -p ~/mid-install
+cd ~/mid-install
+df -h .
+```
+
+目的：
+
+- 创建临时安装目录
+- 确认磁盘剩余空间
+- 此时不使用`sudo`，也不安装任何内容
+
+执行后截图给我。下一步会用不显示URL、不把URL写进Shell历史记录的方式下载。
+
+read -s -p 'Download URL: ' MID_URL; echo
+
+磁盘空间足够：
+
+- 根磁盘：29 GB
+- 已使用：1.7 GB
+- 可用：27 GB
+
+现在安全下载，避免完整URL显示在终端或写入命令历史。
+
+先执行：
+
+```bash
+read -s -p 'Download URL: ' MID_URL; echo
+```
+
+终端显示 `Download URL:` 后：
+
+1. 粘贴完整的 `https://install.service-now.com/...` URL。
+2. URL不会显示，这是正常现象。
+3. 按Enter。
+
+然后执行：
+
+```bash
+curl --fail --location --retry 3 --retry-delay 5 \
+  --output mid-linux-installer.deb "$MID_URL"
+unset MID_URL
+ls -lh mid-linux-installer.deb
+```
+
+下载约530 MB，可能需要几分钟。若粘贴失败，不要手工输入长URL，先停止并截图Bastion终端周围的工具栏。若出现 `401`、`403`或其他错误，只截图错误，不要截图URL。
+
+
+下载成功：
+
+- HTTP下载完成：`100%`
+- 文件大小：Linux显示约`531M`，与Windows端`543,006 KB`一致
+- 文件名：`mid-linux-installer.deb`
+- URL变量已通过`unset MID_URL`清除
+- 截图中没有显示完整URL或令牌
+
+现在先验证安装包，不安装。执行：
+
+```bash
+stat -c 'Size: %s bytes' mid-linux-installer.deb
+file mid-linux-installer.deb
+dpkg-deb --info mid-linux-installer.deb | sed -n '1,25p'
+sha256sum mid-linux-installer.deb
+```
+
+这些命令分别确认：
+
+- 精确字节数
+- 是否为有效Debian安装包
+- ServiceNow包名、版本和架构
+- SHA-256校验值
+
+执行后截图给我。此步骤不需要`sudo`。
+
+检查结果正常：
+
+- 精确大小：`556,038,130 bytes`
+- 格式：有效的`Debian binary package`
+- Package：`agent`
+- Version：`29.3.1.1-2986.el9`
+- Vendor：`ServiceNow, Inc.`
+- Architecture：`amd64`
+- SHA-256：
 
 ```text
-プロセス名：httpd
-設定ファイル：/etc/httpd/conf/httpd.conf
+54d89a39687f85d6ef540f2ee230526a3b25b24a182c362e22b1b0203d4de6f4
 ```
 
-一方、顧客環境では次のように変更されている可能性があります。
+前面第一次`stat`输入错误没有影响，第二次已经执行成功。
+
+安装前再比较Windows本地文件与Ubuntu文件是否完全一致：
+
+1. 回到Windows保存DEB文件的文件夹。
+2. 点击资源管理器地址栏，输入`powershell`并按Enter。
+3. 执行：
+
+```powershell
+(Get-FileHash -Algorithm SHA256 -Path .\*.deb).Hash
+```
+
+结果应与上面的64位SHA-256完全一致，大小写可以忽略。完成后截图给我；暂时不要执行`dpkg`或`apt install`。
+正常。签名ZIP里只有一个：
+
+- `gpg-key.pem`
+- 大小约2 KB
+- 这是ServiceNow提供的**公开验证密钥**，不是私钥
+- DEB的签名信息通常已嵌入安装包，所以ZIP只提供验证用公钥
+
+现在把签名ZIP直接下载到Ubuntu：
+
+1. 在Edge下载记录中复制这个2 KB ZIP的下载链接。
+2. 回到Ubuntu终端，执行：
+
+```bash
+cd ~/mid-install
+```
+
+```bash
+read -s -p 'Signature URL: ' SIG_URL; echo
+```
+
+3. 提示出现后粘贴完整URL并按Enter。URL不会显示。
+4. 然后执行：
+
+```bash
+curl --fail --location --retry 3 \
+  --output mid-signatures.zip "$SIG_URL"
+```
+
+```bash
+unset SIG_URL
+```
+
+```bash
+ls -lh mid-signatures.zip
+```
+
+完成后截图给我。暂时不要导入密钥，也不要安装DEB。
+
+这次复制的仍然是**DEB安装包链接**，不是签名ZIP链接：
+
+- 期望签名ZIP：约`2 KB`
+- 实际下载：`531M`
+- 所以`mid-signatures.zip`只是另一份DEB，被错误命名成`.zip`
+
+没有安装，不影响系统。先删除这份错误副本：
+
+```bash
+rm -- mid-signatures.zip
+```
+
+然后在Edge的`Ctrl+J`下载记录中，找到**文件名以`-deb.zip`结尾、大小2 KB**的记录，复制它的下载链接。
+
+重新下载时增加1 MB限制，避免再次下载530 MB：
+
+```bash
+read -s -p 'Signature ZIP URL: ' SIG_URL; echo
+```
+
+粘贴正确URL并按Enter，然后逐行执行：
+
+```bash
+curl --fail --location --max-filesize 1048576 \
+  --output mid-signatures.zip "$SIG_URL"
+```
+
+```bash
+unset SIG_URL
+```
+
+```bash
+ls -lh mid-signatures.zip
+```
+
+```bash
+file mid-signatures.zip
+```
+
+正确结果应约`2.0K`，并显示`Zip archive data`。若提示文件超过限制，说明仍然复制了DEB链接，不会再次下载完整大文件。
+--------------------------------------------------------------------------------------------------------------------
+
+这两张图已经能确认问题了：你之前复制的是蓝色的 `Download`，不是下面的 `Download signatures`。
+
+正确位置是：
+
+`Linux (DEB) - 64 bit` 这一行 → 点击下面的 `Download signatures`
+
+不要点击蓝色的 `Download`。你之前使用的 URL 中包含：
 
 ```text
-プロセス名：company_web
-設定ファイル：/opt/company/apache/conf/custom.conf
+mid-linux-installer...linux.x86-64-deb.zip
 ```
 
-この場合、OOTB Patternが正常に動作しない可能性があります。
+这是 MID Server 安装包，不是签名文件，所以才会下载约 530 MB。
 
-ただし、直ちに新しいPatternを作成するのではなく、Extension Section、Precondition、またはカスタマイズしたPatternを利用して、顧客固有の条件を追加する方法を優先して検討します。
+操作步骤：
 
-### ケース4：OOTB Patternでは必要な属性を取得できない場合
+1. 在 `Linux (DEB) - 64 bit` 行点击 `Download signatures`。
+2. 右键这个按钮，选择“复制链接地址”。
+3. 在 Linux 终端执行：
 
-OOTB PatternによってApache CIは作成できるものの、顧客が次の情報も必要としている場合があります。
+```bash
+cd ~/mid-installs
+rm -f mid-signatures.zip
+SIG_URL='这里粘贴刚才复制的Download signatures链接'
+printf '%s\n' "$SIG_URL"
+```
 
-- 顧客独自のインスタンス名
-- 特定の設定値
-- 業務で使用しているポート番号
-- クラスタ番号
-- 独自の設定ファイルに記載された情報
+确认显示的是签名链接后，再执行：
 
-この場合は、既存Patternにコマンド実行や設定ファイル解析の処理を追加し、必要な属性を取得します。
+```bash
+curl --fail --location --retry 3 \
+  --output mid-signatures.zip "$SIG_URL"
 
-アプリケーションの識別自体ができているため、Pattern全体を新しく作り直す必要はありません。
+ls -lh mid-signatures.zip
+unzip -l mid-signatures.zip
+```
 
-### ケース5：Horizontal DiscoveryとTop-down Discoveryの両方で使用したい場合
-
-既存のApplication Patternが、Service MappingのEntry Pointを起点とするTop-down Discoveryでのみ使用されている場合があります。
-
-対象のPattern、Classifier、CI Type、Identification Sectionなどの構成を確認し、Horizontal Discoveryからも利用できるようにすることで、両方の検出方式から同じApplication CIを更新できる可能性があります。
-
-ただし、同じCIを更新できるかどうかは、CI Type、Classification、識別条件、Identification Ruleなどにも依存するため、実機での確認が必要です。
-
----
-
-## 4. 利用時の注意点
-
-OOTB Patternをカスタマイズすると、ServiceNowから提供される将来の更新内容が、そのままカスタマイズ部分に反映されない場合があります。
-
-そのため、カスタマイズ前に次の内容を確認する必要があります。
-
-- 本当にOOTB Patternでは対応できないか
-- Patternの最新版が適用されているか
-- 製品バージョンがサポート対象か
-- 顧客固有のパスや設定だけが問題ではないか
-- Extension Sectionで対応できないか
-- カスタマイズ後の保守担当者が明確になっているか
-- ServiceNowのアップグレード時に差分確認ができるか
-
-新規作成やカスタマイズは可能ですが、その後のテスト、変更管理、バージョン管理も必要になります。
-
----
-
-## 5. まとめ
-
-本ドキュメントは、OOTB Patternが存在しない場合だけに使用する手順ではなく、Pattern DesignerによるApplication Patternの基本的な作成方法を、Apache Web Serverを例として説明したものです。
-
-実際の導入では、まずServiceNowが提供するOOTB Patternの有無と適用可否を確認します。
-
-OOTB Patternをそのまま利用できる場合は標準機能を優先し、一部の条件や取得属性だけが不足する場合は既存Patternの拡張またはカスタマイズを検討します。対応するPatternが存在しない場合に、新しいApplication Patternを作成します。
+正确的签名 ZIP 应该明显小于 530 MB，并且内容中应能看到类似：
 
 ```text
-第一選択：OOTB Patternをそのまま利用する
-第二選択：既存Patternを拡張・カスタマイズする
-第三選択：新しいPatternを作成する
+ServiceNow_Digicert_Public.gpg
 ```
 
-この順序はServiceNowの強制ルールではありませんが、開発工数、保守負担およびアップグレード時の影響を抑えるための実務上の推奨方針です。
+然后执行：
 
-### 参考資料
+```bash
+mkdir -p mid-signatures
+unzip -o mid-signatures.zip -d mid-signatures
 
-- [アプリケーションパターンの作成例](https://www.servicenow.com/docs/r/ja-JP/washingtondc/it-operations-management/discovery-and-service-mapping-patterns/t_PatternExamplePatDef.html)
-- [パターンの作成またはカスタマイズ](https://www.servicenow.com/docs/r/ja-JP/washingtondc/it-operations-management/discovery-and-service-mapping-patterns/t_CreatePatternPatDef.html)
-- [利用可能なDiscoveryおよびService Mapping Pattern](https://www.servicenow.com/docs/r/it-operations-management/discovery-and-service-mapping-patterns/available-patterns.html)
+gpg --import mid-signatures/ServiceNow_Digicert_Public.gpg
+dpkg-sig --verify mid-linux-installer.deb
+```
+
+如果验证成功，再安装：
+
+```bash
+sudo dpkg -i ./mid-linux-installer.deb
+```
+
+ServiceNow 官方文档也明确区分了 Linux DEB 安装包和 DEB 签名文件，签名文件应通过 `Download signatures` 获取。[官方 Linux MID Server 安装文档](https://www.servicenow.com/docs/r/servicenow-platform/mid-server/t_InstallAMIDServerOnLinux.html)
+
+----------------------------------------------------------------------------------------
+没问题，`unzip` 已经安装成功，最后显示：
+
+```text
+Setting up unzip
+No services need to be restarted
+```
+
+说明安装正常。你现在已经在正确目录：
+
+```text
+~/mid-installs
+```
+
+接下来执行：
+
+```bash
+unset SIG_URL
+rm -f mid-signatures.zip
+```
+
+然后在 ServiceNow 页面中，点击 `Linux (DEB) - 64 bit` 下方的 `Download signatures`，复制链接。
+
+回到终端执行：
+
+```bash
+read -r -p 'Signature ZIP URL: ' SIG_URL
+echo
+```
+
+粘贴刚才复制的地址后按 Enter。
+
+确认地址：
+
+```bash
+printf '%q\n' "$SIG_URL"
+```
+
+然后下载：
+
+```bash
+curl --fail --location --retry 3 \
+  --output mid-signatures.zip "$SIG_URL"
+```
+
+确认文件：
+
+```bash
+ls -lh mid-signatures.zip
+unzip -l mid-signatures.zip
+```
+
+如果看到 `ServiceNow_Digicert_Public.gpg`，说明签名 ZIP 下载正确。若又下载出约 530 MB，说明复制的仍然是蓝色 `Download` 的链接。
+
+在当前终端直接执行：
+
+```bash
+SIG_URL="${SIG_URL#echo}"
+```
+
+确认：
+
+```bash
+printf '%s\n' "$SIG_URL"
+```
+
+如果开头显示：
+
+```text
+https://install.service-now.com/...
+```
+
+就修正成功了。
+
+然后再执行下载：
+
+```bash
+curl --fail --location --retry 3 \
+  --output mid-signatures.zip "$SIG_URL"
+```
+这次已经成功了。
+
+关键证据：
+
+```text
+100  1347  100  1347
+```
+
+说明 `mid-signatures.zip` 已下载完成，大小约 1.3 KB，而且 `echohttps` 问题也已经修正。
+
+现在执行：
+
+```bash
+ls -lh mid-signatures.zip
+unzip -l mid-signatures.zip
+```
+
+如果能看到类似：
+
+```text
+ServiceNow_Digicert_Public.gpg
+```
+
+继续执行：
+
+```bash
+mkdir -p mid-signatures
+unzip -o mid-signatures.zip -d mid-signatures
+find mid-signatures -maxdepth 2 -type f -print
+```
+
+把 `unzip -l mid-signatures.zip` 的结果截图发来，我再确认下一步的公钥导入和 DEB 签名验证命令。
+
+建议一行一行执行：
+
+1. 输入后按 Enter：
+
+```bash
+unzip -o mid-signatures.zip
+```
+
+看到解压完成并回到命令提示符后，再输入：
+
+```bash
+ls -lh gpg-key.pem
+```
+
+两条命令都只是解压和确认文件，不会安装 MID Server。
+
+解压和文件确认都成功了：
+
+```text
+gpg-key.pem  1.2K
+```
+
+下一步先确认签名验证工具是否存在。请一行一行执行：
+
+```bash
+command -v gpg
+```
+
+再执行：
+
+```bash
+command -v dpkg-sig
+```
+
+把两条命令的结果发给我。现在还不要安装 `.deb` 文件。
+
+结果很清楚：
+
+- `gpg` 已安装：`/usr/bin/gpg`
+- `dpkg-sig` 没有安装，所以没有显示路径
+
+需要先安装签名验证工具。请执行这一行：
+
+```bash
+sudo apt-get update
+```
+
+它只会更新 Ubuntu 的软件包清单，不会安装 MID Server。执行完成后把结果发给我，再进行下一步。
+`apt-get update` 已成功完成，软件包清单正常更新。
+
+现在安装签名验证工具：
+
+```bash
+sudo apt-get install -y dpkg-sig
+```
+
+如果提示输入密码，请输入 Ubuntu 管理员账号的登录密码。输入时屏幕不会显示字符，这是正常现象。
+
+安装完成后先不要安装 MID Server，把结果截图发给我。
+安装失败的原因是：
+
+```text
+E: Unable to locate package dpkg-sig
+```
+
+这表示 Ubuntu 24.04 当前软件源中没有这个工具，不是 MID Server 安装包有问题。
+
+下一步先确认 `.deb` 文件内部是否包含 ServiceNow 的签名信息。执行：
+
+```bash
+ar t mid-linux-installer.deb
+```
+
+这是只读检查，不会安装任何内容。把结果发给我，重点看是否有类似：
+
+```text
+_gpgorigin
+```
+
+暂时不要执行 `dpkg -i`。
+这次不是 `.deb` 的问题，而是系统没有安装 `ar` 工具。画面已经给出了建议：
+
+```text
+sudo apt install binutils
+```
+
+请执行：
+
+```bash
+sudo apt install -y binutils
+```
+
+安装完成后先把结果发给我。它只安装文件检查工具，不会安装 MID Server。
+
+检查结果确认了：
+
+```text
+_gpgbuilder
+```
+
+这个条目就是 `.deb` 内嵌的签名数据。因为这里不是 `_gpgorigin`，应使用 `debsig-verify` 方式验证，而不是继续找 `dpkg-sig`。
+
+请执行：
+
+```bash
+sudo apt install -y debsig-verify
+```
+
+执行完成后把结果发给我。暂时不要运行 `dpkg -i`。
+`debsig-verify` 安装成功，且没有需要重启的服务。
+
+现在先尝试验证这个 DEB 的签名：
+
+```bash
+debsig-verify -v mid-linux-installer.deb
+```
+
+请把完整结果发给我。这个命令只验证签名，不会安装或启动 MID Server。
+这个结果暂时不能判定为“文件未签名”。
+
+原因是：`.deb` 中确实有 `_gpgbuilder` 签名数据，但 `debsig-verify` 还没有配置 ServiceNow 提供的公钥和验证策略，所以无法识别签名来源。
+
+先确认公钥指纹。执行：
+
+```bash
+gpg --show-keys --with-fingerprint gpg-key.pem
+```
+
+这是只读检查，不会导入或修改系统密钥。请把结果发给我，重点是完整的 `fingerprint` 行。不要执行 `dpkg -i`。
+公钥确认成功，身份是：
+
+```text
+ServiceNow, Inc. (Signing)
+```
+
+指纹：
+
+```text
+CBDE 8461 2594 7AF9 9D38 FF1C A401 1FF1 3EB2 8593
+```
+
+刚才的 `debsig-verify` 失败，是因为这个包使用的是 `_gpgbuilder` 签名格式，应该用 `dpkg-sig` 验证。Ubuntu 24.04 默认源没有这个工具。
+
+先下载验证工具到当前目录，暂时不要安装：
+
+```bash
+curl --fail --location --output dpkg-sig.deb 'https://deb.debian.org/debian/pool/main/d/dpkg-sig/dpkg-sig_0.13.1+nmu4_all.deb'
+```
+
+下载完成后把画面发给我，我再确认文件后执行安装。
+文件类型确认正确：
+
+```text
+Debian binary package (format 2.0)
+```
+
+现在安装这个签名验证工具：
+
+```bash
+sudo apt install ./dpkg-sig.deb
+```
+
+它只安装 `dpkg-sig` 验证工具，不会安装或启动 MID Server。安装完成后把画面发给我。
+
+`dpkg-sig` 已安装成功。末尾的 `_apt Permission denied` 是本地 `.deb` 位于用户目录时的常见提示，安装本身已完成。
+
+现在把 ServiceNow 公钥导入当前用户的 GPG 密钥环：
+
+```bash
+gpg --import gpg-key.pem
+```
+
+看到 `ServiceNow, Inc. (Signing)` 被导入后，把结果发给我。然后再执行最终的 DEB 签名验证。
+公钥导入成功，且关键 ID 与指纹一致：
+
+```text
+A4011FF13EB28593
+ServiceNow, Inc. (Signing)
+```
+
+现在执行最终签名验证：
+
+```bash
+dpkg-sig --verify mid-linux-installer.deb
+```
+
+正常结果应包含：
+
+```text
+GOODSIG _gpgbuilder
+```
+
+只有看到 `GOODSIG` 才继续安装 MID Server。把完整结果发给我。
+签名验证成功：
+
+```text
+GOODSIG _gpgbuilder
+```
+
+签名指纹与刚才导入的 ServiceNow 公钥一致，安装包可以继续使用。请先保存这张截图作为证跡。
+
+现在安装 MID Server 的 Linux DEB 包：
+
+```bash
+sudo dpkg -i mid-linux-installer.deb
+```
+
+这一步只安装 MID Server 文件，不会立即完成实例连接配置。执行完成后把结果发给我。
+签名验证成功：
+
+```text
+GOODSIG _gpgbuilder
+```
+
+签名指纹与刚才导入的 ServiceNow 公钥一致，安装包可以继续使用。请先保存这张截图作为证跡。
+
+现在安装 MID Server 的 Linux DEB 包：
+
+```bash
+sudo dpkg -i mid-linux-installer.deb
+```
+
+这一步只安装 MID Server 文件，不会立即完成实例连接配置。执行完成后把结果发给我。
+
+系统确认正常：
+
+```text
+Ubuntu GLIBC 2.39
+```
+
+它高于 MID Server 要求的 `glibc >= 2.17`。所以当前只是 DEB 的依赖名称与 Ubuntu 包管理器不匹配，实际运行库已经满足要求。
+
+现在用已确认的运行库版本强制完成 `agent` 包配置：
+
+```bash
+sudo dpkg --force-depends --configure agent
+```
+
+这一步会配置刚才已经解包的 MID Server 文件，不会重新下载。执行后把结果发给我。不要运行 `apt -f install`。
+配置命令已经继续执行，并且输出显示：
+
+```text
+MID Server has been installed
+MID Server can be configured using /agent/installer.sh
+```
+
+其中 `[[ : not found` 和 `This system supports neither RPM nor DEB` 是安装脚本使用了 Bash 语法，但 Ubuntu 默认用 `dash` 执行脚本导致的提示。现在先确认安装脚本是否实际存在。
+
+执行：
+
+```bash
+sudo ls -l /agent/installer.sh
+```
+
+如果能看到文件，再进入 MID Server 的实例连接配置。先不要直接执行安装脚本。
+这个结果说明安装脚本确实没有被放置到 `/agent`，所以暂时不能继续配置 MID Server。
+
+下一步先查看 `.deb` 内部实际包含的路径：
+
+```bash
+dpkg-deb -c mid-linux-installer.deb | grep -E 'installer\.sh|agent/'
+```
+
+这是只读检查。把结果发给我后，我们再决定是修正安装脚本的执行方式，还是改用包内的正确目录。不要手动创建 `/agent`，也不要重新下载。
+从这几张图可以确认，MID Server 文件实际位于：
+
+```text
+/opt/servicenow/mid/agent/
+```
+
+之前提示的 `/agent/installer.sh` 是安装脚本判断 Ubuntu 发行版失败后输出的错误路径，不能使用。不要移动目录，也不要创建 `/agent`。
+
+现在请查找实际的配置脚本：
+
+```bash
+sudo find /opt/servicenow/mid -maxdepth 3 -type f -name '*.sh' -print
+```
+
+把结果发给我。重点确认是否存在：
+
+```text
+/opt/servicenow/mid/agent/installer.sh
+```
+确认成功，正确的配置脚本是：
+
+```text
+/opt/servicenow/mid/agent/installer.sh
+```
+
+现在执行：
+
+```bash
+sudo /opt/servicenow/mid/agent/installer.sh
+```
+
+脚本会进入 MID Server 配置向导。之后可能会要求输入 ServiceNow 实例地址、用户名、密码和 MID Server 名称。
+
+输入密码时不要截图，也不要把密码发给我。先把启动后的第一个提示画面发给我，我们逐项填写。
+安装成功，关键结果是：
+
+```text
+Created symlink ... mid_p5230_itom2.service
+Mid is running as a service successfully.
+PID: 9641
+```
+
+同时目录权限也已按要求调整为 `p5230admin`。空间不足警告没有阻止本次启动，但后续仍建议扩容磁盘。
+
+现在先确认 systemd 服务状态：
+
+```bash
+sudo systemctl status mid_p5230_itom2 --no-pager
+```
+
+把结果发给我，确认服务持续处于 `active (running)` 后，再去 ServiceNow 页面确认 MID Server 状态。
+现在不建议继续重复点击 `Validate`。从列表看：
+
+- `Status = Up`：连接在线
+- `Validated = Validating`：验证请求仍未返回
+
+请在 Ubuntu VM 中执行：
+
+```bash
+sudo tail -n 80 /opt/servicenow/mid/agent/logs/agent0.log
+```
+
+把结果截图发给我。日志中如果出现账号、URL 或令牌，请先遮挡；不要重启 MID Server。
+这不是故障，命令只是提示：
+
+```text
+/opt/servicenow/mid/agent/logs/agent0.log 不存在
+```
+
+说明当前版本的日志目录不是这个路径。服务本身仍然是 `active (running)`。
+
+请执行下面的查找命令：
+
+```bash
+sudo find /opt/servicenow/mid -maxdepth 4 \( -type d -name logs -o -type f -name '*.log' \) -print
+```
+
+把结果发给我，我们再读取正确的日志文件。
+日志目录找到了，实际日志文件是：
+
+```text
+/opt/servicenow/mid/agent/logs/wrapper.log
+```
+
+请读取最近日志：
+
+```bash
+sudo tail -n 100 /opt/servicenow/mid/agent/logs/wrapper.log
+```
+
+把结果发给我。重点检查是否有连接、验证请求或异常信息。不要再次点击 `Validate`。
+从 `wrapper.log` 看，MID Server JVM 启动正常，没有连接失败或异常停止：
+
+- Wrapper 启动成功
+- Java 服务已启动
+- 没有 `ERROR`
+- 看到的内容只是 Java 弃用警告，不影响运行
+
+现在确认日志目录里是否还有其他文件：
+
+```bash
+sudo ls -la /opt/servicenow/mid/agent/logs
+```
+
+把结果发给我。`Validated` 卡住不一定是 Linux 服务问题，也可能是 ServiceNow 端的验证请求还没有完成。
+找到真正的 MID Server 应用日志了：
+
+```text
+agent0.log.0
+```
+
+文件大小约 `175 KB`，说明 MID Server 已经持续运行并写入日志。
+
+请读取末尾内容：
+
+```bash
+sudo tail -n 100 /opt/servicenow/mid/agent/logs/agent0.log.0
+```
+
+把结果发给我，重点看最后几十行是否有 `ERROR`、`WARN` 或验证相关信息。
+日志显示 MID Server 工作正常：
+
+- 持续发送 `HeartbeatProbe`
+- 持续向 ServiceNow 发送 ECC 消息
+- 没有明显的 `ERROR` 或连接失败
+- `MID server is not yet validated` 只是说明验证尚未完成，因此跳过了相关白名单更新
+
+现在筛选验证和异常信息：
+
+```bash
+sudo grep -i -E 'validat|error|exception|fail' /opt/servicenow/mid/agent/logs/agent0.log.0 | tail -n 50
+
+ServiceNow公式ドキュメントでは、WindowsサーバーをDiscoveryする場合、MID ServerはWindows Server上に構築する必要があります。
+
+https://www.servicenow.com/docs/r/servicenow-platform/mid-server/r_MIDServerSystemRequirements.html
+https://www.servicenow.com/docs/r/it-operations-management/discovery/r_PowerShellForDiscovery.html
+```
+
+把结果发给我。不要再次点击 `Validate`。
+
+
+按当前 ServiceNow 官方文档，必须使用 **Windows MID Server** 的主要场景有：
+
+| 场景 | 是否需要 Windows MID |
+|---|---|
+| Windows 服务器 Discovery（WMI、WinRM、PowerShell） | **需要** |
+| Windows Server Cluster Discovery | **需要** |
+| Hyper-V Discovery | **需要**，因为需要 PowerShell |
+| Credential-less Discovery（Nmap） | **需要**，Nmap 官方仅支持安装在 Windows MID 上 |
+| Discovery Behavior：`Windows only (WMI)` | **需要** |
+| Discovery Behavior：`Windows, DNS, and WINS` | **需要** |
+
+此外，虽然不属于普通 Discovery：
+
+- Windows 设备的 Service Mapping Patterns：需要 Windows MID
+- Windows 设备的 Orchestration：需要 Windows MID
+- Service Graph Connector for SCCM：官方要求 Windows MID Server
+
+一般**不要求** Windows MID 的场景包括：
+
+- Linux/Unix Discovery：通过 SSH，Windows 或 Linux MID 都可以
+- SNMP 网络设备 Discovery
+- VMware vCenter/ESXi Discovery：当前官方文档没有要求必须使用 Windows MID
+
+官方参考：
+
+- [MID Server system requirements](https://www.servicenow.com/docs/r/servicenow-platform/mid-server/r_MIDServerSystemRequirements.html)
+- [Discovery behaviors](https://www.servicenow.com/docs/r/it-operations-management/discovery/c_DiscoveryBehaviors.html)
+- [PowerShell for Discovery and Service Mapping](https://www.servicenow.com/docs/r/it-operations-management/discovery/r_PowerShellForDiscovery.html)
+- [Hyper-V discovery](https://www.servicenow.com/docs/r/it-operations-management/itom-visibility/r_DiscoveryForHyperV.html)
+- [Credential-less discovery with Nmap](https://www.servicenow.com/docs/r/it-operations-management/discovery/nmap-credential-less-discovery.html)
+- [Configure Service Graph Connector for Microsoft SCCM](https://www.servicenow.com/docs/r/servicenow-platform/service-graph-connectors/configure-sccm-integration.html)
+
+
+看到了。这是《通信要件》表。按照这个格式，**你当前 PoC 如果采用 vCenter Discovery，只需要追加下面这一行**，不要写成 MID Server → ESXi。
+
+## 当前 PoC：vCenter Discovery
+
+| 项目 | 记入内容 |
+|---|---|
+| 案件/プロジェクト名 | ServiceNow Discovery / MID Server |
+| 目的 | VMware vCenter経由のESXi / VM / Datastore Discovery |
+| 通信区分 | Inbound to vCenter |
+| 方向 | MID → vCenter |
+| 送元種別 | MID Server |
+| 送元IP/FQDN | `<MID Server IP>` |
+| 宛先種別 | VMware vCenter |
+| 宛先IP/FQDN | `<vCenter IP / FQDN>` |
+| プロトコル | TCP |
+| ポート | 443 |
+| URL/サービス名 | VMware vCenter API / HTTPS |
+| 対象OS | N/A（vCenter Server Appliance） |
+| 対象種別 | VMware vCenter |
+| 用途詳細 | ServiceNow DiscoveryがvCenter APIを利用し、ESXiホスト、VM、Datastore等の情報を取得 |
+| 必要理由 | VMware / ESXi Discovery検証のため |
+| 常時/一時 | 一時（PoC期間中） |
+| 暗号化 | HTTPS / TLS |
+| 認証方式 | VMware Credential（Read-only） |
+| 制限条件 | 送信元をMID Server IPに限定。宛先をvCenter IP/FQDNに限定 |
+| 備考 | vCenter管理下のESXi用。ESXi IPはDiscovery Scheduleに直接指定しない |
+
+### 只有 Standalone ESXi 时再追加第二行
+
+| 项目 | 记入内容 |
+|---|---|
+| 目的 | Standalone ESXi Discovery |
+| 通信区分 | Inbound to ESXi |
+| 方向 | MID → ESXi |
+| 送元種別 | MID Server |
+| 送元IP/FQDN | `<MID Server IP>` |
+| 宛先種別 | Standalone ESXi |
+| 宛先IP/FQDN | `<ESXi Host IP>` |
+| プロトコル | TCP |
+| ポート | 902 |
+| URL/サービス名 | ESXi IP Service |
+| 対象OS | ESXi |
+| 対象種別 | Standalone ESXi |
+| 用途詳細 | ServiceNow Discoveryによる独立ESXiホスト情報取得 |
+| 必要理由 | Standalone ESXi Discovery検証のため |
+| 常時/一時 | 一時（PoC期間中） |
+| 認証方式 | VMware Credential（Read-only） |
+| 制限条件 | 送信元をMID Server IPに限定。対象ESXi IPを限定 |
+| 備考 | vCenter管理下のESXiでは使用しない |
+
+**本次应填写：**
+
+```text
+MID Server → vCenter / TCP 443
+```
+
+只有没有 vCenter、直接发现独立 ESXi 时，才填写：
+
+```text
+MID Server → ESXi / TCP 902
+```
+
+官方参考：
+
+- [ServiceNow VMware vCenter Discovery](https://www.servicenow.com/docs/r/xanadu/it-operations-management/itom-visibility/c_DiscoveryForVMwareVCenter.html)
+- [ServiceNow Standalone ESXi Discovery](https://www.servicenow.com/docs/r/xanadu/it-operations-management/itom-visibility/StandaloneESXiDiscovery.html)
+- [Broadcom: Connecting to vCenter Server Through a Firewall](https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/8-0/vsphere-security/securing-vsphere-networking/securing-the-network-with-firewalls/connecting-to-vcenter-server-through-a-firewall.html)
