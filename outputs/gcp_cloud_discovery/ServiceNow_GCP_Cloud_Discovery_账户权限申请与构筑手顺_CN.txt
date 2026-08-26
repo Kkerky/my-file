@@ -1,0 +1,488 @@
+ServiceNow GCP Cloud Discovery
+GCP账户、权限申请与构筑手顺（中文版）
+
+文档版本：1.0
+编制日期：2026-08-26
+参考版本：ServiceNow Australia版公开文档
+
+======================================================================
+1. 目的
+======================================================================
+
+本文档说明为了使用ServiceNow Cloud Discovery发现Google Cloud Platform（GCP）
+资源，需要向GCP管理团队申请哪些信息、创建什么账号、授予什么权限，以及收到
+账号后如何在ServiceNow中进行登记和验证。
+
+本手顺的对象是“通过GCP API取得云资源信息”的Cloud Discovery。
+它可以发现Project、Region、VPC、Subnet、VM、Disk、NIC、Load Balancer等云侧
+资源及关系，但不等同于登录VM内部取得OS、进程和安装软件信息。
+
+如果还需要发现Windows/Linux VM内部信息，应另外实施IP-based Discovery，
+并准备MID Server到VM的网络访问以及Windows/SSH认证信息。
+
+======================================================================
+2. 本手顺中出现的账号
+======================================================================
+
+2.1 GCP作业人员账号
+
+用途：在GCP Console中创建Service Account、分配IAM权限、启用API、生成JSON Key。
+此账号是现有的企业GCP管理员账号，不登记到ServiceNow中。
+
+作业人员可能需要的权限如下。实际由客户GCP IAM管理员根据职责分配：
+
+- 创建Service Account：Create Service Accounts
+  roles/iam.serviceAccountCreator
+- 管理Service Account时：Service Account Admin
+  roles/iam.serviceAccountAdmin
+- 创建JSON Key：Service Account Key Admin
+  roles/iam.serviceAccountKeyAdmin
+- 修改Project权限：Project IAM Admin
+  roles/resourcemanager.projectIamAdmin
+- 修改Folder权限：Folder Admin
+  roles/resourcemanager.folderAdmin
+- 修改Organization权限：Organization Admin
+  roles/resourcemanager.organizationAdmin
+- 启用API：Service Usage Admin
+  roles/serviceusage.serviceUsageAdmin
+
+注意：这些是“构筑作业人员”的管理权限，不应授予长期运行Discovery的Service
+Account。
+
+2.2 GCP Discovery Service Account
+
+用途：ServiceNow通过该非人账号调用GCP API，读取云资源信息。
+
+建议名称：svc-servicenow-discovery
+账号形式：svc-servicenow-discovery@<HOST_PROJECT_ID>.iam.gserviceaccount.com
+
+原则：
+
+- 使用Discovery专用Service Account，不共用个人账号或其他系统账号。
+- 只授予读取所需的权限，不授予Owner或Editor。
+- 明确账号负责人、使用目的、发现范围、Key轮换周期和停用流程。
+
+2.3 ServiceNow作业人员账号
+
+用途：在ServiceNow中导入Google API Credential、创建Cloud Service Account及
+Discovery Schedule。
+
+所需Role：discovery_admin
+
+2.4 MID Server
+
+Cloud Discovery通过MID Server访问Google API。MID Server必须满足以下条件：
+
+- 已在ServiceNow中验证，Status为Up。
+- 配置Google、Cloud Management或ALL capability。
+- 可以通过HTTPS访问Google API。
+- ServiceNow当前GCP Pattern文档将专用MID Server列为要求，并记载MID Server必须
+  具备16 Core、8 GB RAM，同时为JVM分配4 GB内存。
+
+======================================================================
+3. 申请前确定发现范围
+======================================================================
+
+在提交GCP申请前，必须先决定以下内容：
+
+1) 发现单位
+   - 单个Project
+   - 多个Project
+   - Folder下的Project
+   - Organization下的Project
+
+2) 对象ID
+   - Organization ID
+   - Folder ID
+   - Project ID列表
+
+3) 需要发现的资源类型
+   - Compute Engine VM、Disk、NIC
+   - VPC、Subnet、Firewall Rule、IP
+   - Load Balancer
+   - Cloud Storage
+   - Cloud SQL
+   - GKE
+   - BigQuery、Bigtable等
+
+4) 是否只验证Cloud Discovery
+   - 只验证云资源元数据时，不需要登录VM内部。
+   - 同时验证VM内部发现时，需要追加IP-based Discovery、网络路由和OS Credential。
+
+5) MID Server出口方式
+   - 直接访问Internet
+   - 通过Proxy访问Google API
+
+======================================================================
+4. 向GCP团队提交的申请内容
+======================================================================
+
+申请件名：
+ServiceNow GCP Cloud Discovery用Service Account及只读权限申请
+
+申请目的：
+ServiceNow ITOM Discovery通过GCP API读取指定范围内的云资源元数据，并在CMDB中
+创建或更新对应CI和关系。本申请不用于创建、修改或删除GCP资源。
+
+申请项目：
+
+1) 创建专用Service Account
+   建议名称：svc-servicenow-discovery
+   创建位置：<HOST_PROJECT_ID>
+   负责人：<OWNER_NAME/TEAM>
+
+2) 授予发现权限
+   基本权限：Viewer（roles/viewer）
+   授权范围：<PROJECT_ID / FOLDER_ID / ORGANIZATION_ID>
+
+   - 单个Project：仅在目标Project授予。
+   - 多个Project：逐个Project授予，或在客户允许时从共通Folder继承。
+   - 不要为了方便直接在整个Organization授予，除非发现范围确实是整个Organization。
+
+3) Cloud Asset Inventory对象的条件权限
+   如果使用GCP Resource Inventory／Cloud Asset Inventory Pattern，申请：
+
+   - Cloud Asset Viewer（roles/cloudasset.viewer）
+   - Service Usage Consumer（roles/serviceusage.serviceUsageConsumer）
+
+4) 其他Pattern权限
+   ServiceNow的GCP Pattern会根据发现资源类型调用不同REST API。最终权限必须使用
+   最新版“Cloud Discovery patterns spreadsheet”确认。缺少权限时，应追加表中明确
+   要求的只读Permission，不能直接改成Owner或Editor解决。
+
+5) 启用必要API
+
+   构筑和账号管理时常用：
+   - Identity and Access Management (IAM) API
+   - Cloud Resource Manager API
+   - Service Usage API
+
+   Cloud Discovery常见候选：
+   - Compute Engine API
+   - Cloud Asset API（使用Resource Inventory时）
+   - Cloud Storage API
+   - Cloud SQL Admin API
+   - Kubernetes Engine API
+   - 其他与本次发现资源对应的API
+
+   注意：以上是分类示例，不是所有环境都必须全部启用。最终以本次采用的GCP
+   Patterns及Cloud Discovery patterns spreadsheet为准。
+
+6) 创建JSON Key
+   Key Type：JSON
+   用途：ServiceNow Google API Credentials
+
+7) 安全传递
+   JSON Key必须通过客户批准的Secret管理或受控文件传递方式交付给ServiceNow
+   管理员。禁止通过普通邮件、聊天、Git、共享无权限限制的文件夹或工单正文传递。
+
+8) 网络许可
+   允许MID Server通过TCP 443访问OAuth Token Endpoint及本次Pattern调用的
+   Google APIs。具体FQDN／Proxy规则由网络团队按照客户安全标准确认。
+
+9) 运维信息
+   - Service Account Owner
+   - JSON Key保管负责人
+   - Key轮换周期
+   - 权限定期复核周期
+   - PoC结束后的Key删除／账号停用日期
+
+======================================================================
+5. GCP侧构筑手顺
+======================================================================
+
+5.1 创建Service Account
+
+1) 使用GCP管理员账号登录Google Cloud Console。
+2) 选择用于管理Discovery Service Account的Project。
+3) 打开IAM & Admin > Service Accounts。
+4) 选择Create service account。
+5) 输入：
+   Service account name：svc-servicenow-discovery
+   Service account ID：svc-servicenow-discovery
+   Description：Read-only account for ServiceNow GCP Cloud Discovery
+6) 完成创建。
+7) 记录生成的Service Account Email和HOST_PROJECT_ID。
+
+建议先创建账号，再由IAM管理员在真正的发现对象Scope上单独授予权限，不要把
+账号创建Project与资源发现范围混为一谈。
+
+5.2 授予Viewer
+
+1) 在GCP Console中切换到目标Project、Folder或Organization。
+2) 打开IAM页面。
+3) 选择Grant Access，或编辑该Service Account Principal。
+4) Principal填写Service Account Email。
+5) Role选择Viewer（roles/viewer）。
+6) 保存并等待IAM变更传播。
+
+PoC判断：
+ServiceNow官方GCP Cloud Discovery Pattern文档明确要求将GCP member权限设为
+Viewer。因此Viewer可作为PoC的官方基准。
+
+正式环境判断：
+Viewer属于GCP Basic Role，范围较广。正式环境建议根据最新Cloud Discovery
+patterns spreadsheet把权限收敛为Custom Role或必要的Predefined Roles，并由
+GCP安全团队批准。不要在没有完成Pattern权限分析前声称某个Custom Role一定完整。
+
+5.3 启用API
+
+1) 打开APIs & Services > API Library。
+2) 选择相关Project。
+3) 搜索本次采用Pattern所需的API。
+4) 选择Enable。
+5) 记录已启用API列表和确认日期。
+
+5.4 创建JSON Key
+
+1) 打开IAM & Admin > Service Accounts。
+2) 选择svc-servicenow-discovery。
+3) 打开Keys页。
+4) 选择Add key > Create new key。
+5) Key type选择JSON。
+6) 选择Create并下载JSON文件。
+7) 记录Key ID、创建日期和负责人。
+8) 将JSON文件立即移至客户批准的安全保管位置。
+
+重要安全注意事项：
+
+- JSON Key只会在创建时下载一次，应按高敏感Secret管理。
+- 持有Key的人可以使用Service Account拥有的全部权限。
+- GCP Organization在2024-05-03以后创建时，禁止创建Service Account Key的组织
+  Policy可能默认启用。
+- 如果客户禁止JSON Key，不要自行关闭整个Organization的安全Policy。应由GCP
+  安全管理员判断是否对专用Project做最小范围例外；如不允许例外，应先向
+  ServiceNow确认该版本是否支持客户要求的无Key认证方式，再决定构筑方案。
+
+======================================================================
+6. ServiceNow侧构筑手顺
+======================================================================
+
+6.1 确认应用和MID Server
+
+1) 确认以下应用为最新可用版本：
+   - Discovery and Service Mapping Patterns
+   - Visibility Content
+   - CMDB CI Class Models
+
+2) ServiceNow文档列出的早期最低版本为：
+   - Discovery and Service Mapping Patterns 1.8.0以上
+   - CMDB CI Class Models 1.49.0以上
+   - Visibility Content 6.13.0以上
+
+3) 不应只满足旧最低版本；实际构筑时应使用客户Release可用的最新兼容版本。
+
+4) 确认MID Server：
+   - Validated
+   - Status = Up
+   - Capability = Google、Cloud Management或ALL
+   - 可以访问Google API
+
+5) 使用Discovery Admin Workspace时，确认版本为1.11.0以上。
+
+6.2 导入Google API Credentials
+
+1) 使用具有discovery_admin的账号登录ServiceNow。
+2) 打开Discovery > Credentials。
+3) 选择New。
+4) 选择Google API Credentials。
+5) 选择Import JSON File。
+6) 选择GCP团队安全交付的JSON文件。
+7) 选择Upload Credential Data。
+8) 输入能够识别环境和Scope的Credential Name。
+   例：GCP_DISCOVERY_POC_PROJECT_A
+9) 保存。
+
+注意：
+
+- 不要把JSON内容复制到作业手顺、Excel、Git或截图中。
+- 导入完成后，按照客户规定安全删除作业终端上的临时JSON文件。
+- ServiceNow中Credential的访问权限也应限制给Discovery管理员。
+
+6.3 创建GCP Cloud Service Account记录
+
+1) 在Navigation中输入：cmdb_ci_cloud_service_account.list
+2) 选择New。
+3) 填写：
+   Name：唯一且可识别的名称
+   Account Id：JSON中的project_id
+   Discovery Credentials：第6.2节创建的Credential
+   Datacenter URL：留空
+   Datacenter Type：Google Datacenter／Google Cloud Platform Datacenter
+4) Submit。
+
+如果通过Discovery Admin Workspace创建Cloud Account，也应确认Project ID／Folder
+ID、Credential和Service Account的组合与申请Scope一致。
+
+6.4 创建GCP Discovery Schedule
+
+1) 打开Workspaces > Discovery Admin Workspace > Schedules。
+2) 选择New Discovery。
+3) 选择Cloud-based discovery。
+4) 输入Schedule Name。
+5) Cloud Provider选择Google。
+6) 选择Validated、Up且具有Cloud Management能力的MID Server。
+7) 选择Existing cloud account或创建New cloud account。
+8) 确认Project ID／Folder ID。
+9) 管理账号场景下，选择Discover all Projects或Discover specific Projects。
+10) 选择发现Region。
+11) 仅验证Cloud Discovery时，先不要启用Create a server discovery schedule。
+12) 设为Run on demand，先进行小范围PoC。
+13) 选择Finish and run。
+
+Cloud Discovery成功后，如果还要发现VM内部OS、进程、软件，再单独设计Server
+Discovery Schedule。不要把云API发现成功和VM内部发现成功视为同一项验证。
+
+======================================================================
+7. 验证项目
+======================================================================
+
+7.1 GCP侧验证
+
+- Service Account存在且名称、Owner正确。
+- Viewer授予在正确的Project／Folder／Organization Scope。
+- 未授予Owner、Editor或不必要的写权限。
+- 必要API已启用。
+- JSON Key处于有效状态，Key ID已记录。
+
+7.2 MID Server验证
+
+- MID Server为Up、Validated。
+- 具有Google／Cloud Management／ALL capability。
+- 能解析并通过TCP 443访问Google认证及API端点。
+- 使用Proxy时，Proxy设置正确。
+
+7.3 ServiceNow验证
+
+- Credential可以被Schedule选择。
+- Verify information成功。
+- Discovery Status中没有PERMISSION_DENIED或API disabled错误。
+- 能取得预定Project和Region。
+- CMDB中创建或更新预期的GCP资源CI和关系。
+- 重复执行Schedule不会无控制地创建重复CI。
+
+7.4 常见错误判断
+
+PERMISSION_DENIED：
+检查Service Account的Role、授权Scope以及Pattern要求的追加Permission。
+
+API has not been used／SERVICE_DISABLED：
+在正确Project启用对应API后重试。
+
+无法显示Project：
+检查Project／Folder／Organization ID、Resource Manager可见性以及IAM继承范围。
+
+Invalid credential／Invalid JWT：
+检查是否选错JSON、Key是否已删除、Service Account是否停用，并确认MID Server时间。
+
+Cloud CI存在但没有OS／软件：
+这是Cloud Discovery与IP-based Discovery范围不同，不代表Cloud Discovery失败。
+
+======================================================================
+8. Key轮换和PoC结束处理
+======================================================================
+
+1) 创建新的JSON Key。
+2) 在ServiceNow中新建或更新Google API Credential。
+3) 将Cloud Service Account／Schedule切换到新Credential。
+4) 执行小范围Discovery并确认成功。
+5) 在GCP删除旧Key。
+6) 确认旧Key已经无法使用。
+7) 更新Key ID、轮换日期、负责人和下次轮换日期。
+
+PoC结束时，根据客户决定执行以下之一：
+
+- 保留账号但删除JSON Key并移除IAM Role。
+- 删除Service Account。
+- 转为正式账号，并按正式环境最小权限和轮换标准重新审查。
+
+======================================================================
+9. 申请结果回收清单
+======================================================================
+
+[ ] HOST_PROJECT_ID
+[ ] 目标Organization ID／Folder ID／Project ID列表
+[ ] Service Account Name
+[ ] Service Account Email
+[ ] 授予Role和授权Scope
+[ ] 追加Custom Permission／Predefined Role清单
+[ ] 已启用API清单
+[ ] JSON Key安全交付位置
+[ ] Key ID和创建日期
+[ ] Service Account／Key Owner
+[ ] Key轮换与PoC结束日期
+[ ] MID Server出口／Proxy规则
+[ ] GCP批准者和批准记录
+
+======================================================================
+10. 重要结论
+======================================================================
+
+1) ServiceNow保存的应是专用GCP Service Account的Google API Credential，不是GCP
+   管理员个人账号。
+
+2) ServiceNow官方当前以Viewer作为GCP Cloud Discovery的权限基准；但Viewer是较广
+   的Basic Role，正式环境应以最新版Pattern权限表为依据收敛权限。
+
+3) 创建账号、生成Key、修改IAM和启用API所需的管理员Role，仅授予构筑作业人员，
+   不授予Discovery Service Account。
+
+4) JSON Key是高敏感Secret。能否创建Key还会受到GCP Organization Policy限制，
+   不能为了PoC随意关闭企业安全策略。
+
+5) Cloud Discovery发现云资源元数据；VM内部OS、进程和软件需要另外实施IP-based
+   Discovery。
+
+======================================================================
+11. 官方参考资料（2026-08-26确认）
+======================================================================
+
+[ServiceNow]
+
+Google Cloud Platform (GCP) Cloud discovery using Patterns
+https://www.servicenow.com/docs/r/it-operations-management/discovery-and-service-mapping-patterns/gcp-cloud-discovery-patterns.html
+
+Configure the Google API credentials for Cloud Discovery
+https://www.servicenow.com/docs/r/it-operations-management/itom-create-google-api-credentials.html
+
+Create GCP service accounts
+https://www.servicenow.com/docs/r/it-operations-management/create-gcp-service-accounts.html
+
+GCP access and permission using policies
+https://www.servicenow.com/docs/r/it-operations-management/gcp-access-and-permission-using-policies.html
+
+Create a GCP Discovery schedule in Discovery Admin Workspace
+https://www.servicenow.com/docs/r/it-operations-management/discovery/create-gcp-schedule-DAW.html
+
+Install and configure MID Servers to access cloud environments
+https://www.servicenow.com/docs/r/it-operations-management/mid-server-configuration-cloud.html
+
+GCP resource inventory
+https://www.servicenow.com/docs/r/it-operations-management/discovery-and-service-mapping-patterns/gcp-resource-inventory-discovery.html
+
+[Google Cloud]
+
+Create service accounts
+https://cloud.google.com/iam/docs/service-accounts-create
+
+Create and delete service account keys
+https://cloud.google.com/iam/docs/keys-create-delete
+
+Manage access to projects, folders, and organizations
+https://cloud.google.com/iam/docs/granting-changing-revoking-access
+
+Enable and disable services
+https://cloud.google.com/service-usage/docs/enable-disable
+
+Cloud Asset Inventory roles and permissions
+https://cloud.google.com/asset-inventory/docs/roles-permissions
+
+IAM roles overview
+https://cloud.google.com/iam/docs/roles-overview
+
+Best practices for using service accounts securely
+https://cloud.google.com/iam/docs/best-practices-service-accounts
+
+备注：ServiceNow Pattern、支持资源和REST API权限会随Store应用版本更新。正式实施
+前必须重新下载最新版Cloud Discovery patterns spreadsheet，并结合客户实例Release、
+已安装应用版本和实际发现Scope进行确认。
