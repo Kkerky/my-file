@@ -1,8 +1,8 @@
-PC2.0 ACC DEV／TEST／PROD 环境总体方案骨架（第一版）
+PC2.0 ACC DEV／TEST／PROD 环境总体方案骨架（单 Subscription 版）
 
-版本：0.1
+版本：0.2
 用途：与 Leader、Azure 团队、ServiceNow 团队及安全团队进行第一次需求确认
-当前阶段：总体设计骨架。资源名称、IP、VM 规格、数量和详细通信规则将在后续逐项补充。
+当前阶段：已确定采用一套 Azure Subscription，在同一订阅内构筑 DEV、TEST、PROD 三套隔离环境。IP、VM 规格、数量和详细通信规则将在后续逐项补充。
 
 
 一、这次任务要解决什么
@@ -21,14 +21,16 @@ PC2.0 是运行在 Azure 上的系统。现在需要开始验证并逐步导入 
 
 二、第一版设计的前提和待确认事项
 
-1. 本方案先把 DEV、TEST、PROD 作为三套“逻辑环境”设计。
-2. Azure 是否能够提供三套 Subscription（订阅），需要 Azure 管理团队确认。
+1. 本方案把 DEV、TEST、PROD 作为三套“逻辑环境”设计。
+2. Azure 采用一套 Subscription（订阅），不再分别建立 DEV、TEST、PROD Subscription。
 3. ServiceNow 是否也有 DEV、TEST、PROD 三个实例，需要 ServiceNow 管理团队确认。
 4. PC2.0 的 PROD 是真实生产环境，还是仅用于生产相当验证，需要 Leader 明确定义。
 5. 现有 Azure 网络、IP 范围、Firewall、Proxy、DNS、NTP、Bastion 和监控资源必须先盘点，不能直接沿用过去 PoC 的配置。
 6. ACC 本次主要面向 Server、Client，还是两者都包括，需要确认目标范围和数量。
 7. Windows 可考虑使用 MECM 分发；Linux 的分发方式需要另行确认，例如 Ansible、Puppet、Chef、内部文件传输机制或管理员执行。
 8. ACC 使用 MID Server 方式连接 ServiceNow。是否还要同时验证 MID-less／ITOM Cloud Services，不包含在第一版默认范围内。
+9. 因为三个环境位于同一 Subscription，必须依靠 Resource Group、VNet、NSG、Azure RBAC、命名和标签实现隔离。
+10. DEV／TEST 作业人员原则上不取得 Subscription 级 Contributor 权限，避免误操作 PROD。
 
 
 三、环境职责定义
@@ -86,72 +88,119 @@ PC2.0 是运行在 Azure 上的系统。现在需要开始验证并逐步导入 
 - PROD 数据不得混入 DEV／TEST 数据
 
 
-四、推荐的总体构成
+四、单 Subscription 总体构成
 
 1. Azure 逻辑结构
 
-推荐的逻辑层级如下：
+本方案正式采用以下结构：
 
 Microsoft Entra Tenant
 └─ PC2.0 管理范围（Management Group 或现有公司管理结构）
-   ├─ PC2.0 DEV
-   │  ├─ 网络资源组
-   │  ├─ ACC／MID 管理资源组
-   │  └─ 验证对象资源组
-   ├─ PC2.0 TEST
-   │  ├─ 网络资源组
-   │  ├─ ACC／MID 管理资源组
-   │  └─ 验证对象资源组
-   └─ PC2.0 PROD
-      ├─ 网络资源组
-      ├─ ACC／MID 管理资源组
-      └─ 正式对象资源组
+   └─ Subscription-PC20（现有或新建的一套订阅）
+      ├─ rg-pc20-dev
+      │  ├─ vnet-pc20-dev
+      │  ├─ MID-ACC-DEV
+      │  ├─ Windows／Linux DEV 验证机
+      │  └─ DEV 专用 NSG、Disk、NIC 等
+      ├─ rg-pc20-test
+      │  ├─ vnet-pc20-test
+      │  ├─ MID-ACC-TEST
+      │  ├─ Windows／Linux TEST 验证机
+      │  └─ TEST 专用 NSG、Disk、NIC 等
+      ├─ rg-pc20-prod
+      │  ├─ vnet-pc20-prod
+      │  ├─ MID-ACC-PROD-01／02
+      │  ├─ PROD Pilot／正式对象
+      │  └─ PROD 专用 NSG、Disk、NIC 等
+      └─ rg-pc20-shared（可选）
+         └─ 经批准后共用的监控、Bastion、DNS 或管理组件
 
-这里表达的是管理逻辑。是否每个环境都使用独立 Subscription，需要从下面三种方式中选择。
-
-
-2. Azure 隔离方式候选
-
-方案 A：三套 Subscription（隔离最强）
-
-  Subscription-PC20-DEV
-  Subscription-PC20-TEST
-  Subscription-PC20-PROD
-
-优点：权限、费用、Policy、配额和误操作范围最容易隔离。
-缺点：需要 Azure 团队提供和管理三套订阅，建设及审批工作最多。
-适用：正式生产系统、长期运营、客户对隔离要求较高的场景。
+最低要求是三个环境各有一个独立 Resource Group 和一个独立 VNet。共用资源组不是必需项，只在确认确实需要共享平台组件时建立。
 
 
-方案 B：两套 Subscription（平衡方案）
+2. Resource Group 设计
 
-  Subscription-PC20-NONPROD
-    ├─ DEV 资源组和 VNet
-    └─ TEST 资源组和 VNet
+初期采用四个 Resource Group：
 
-  Subscription-PC20-PROD
-    └─ PROD 资源组和 VNet
+- rg-pc20-dev：DEV 环境全部资源
+- rg-pc20-test：TEST 环境全部资源
+- rg-pc20-prod：PROD 环境全部资源
+- rg-pc20-shared：可选的共用管理资源
 
-优点：PROD 与非生产环境明确隔离，成本和管理工作比三订阅低。
-缺点：DEV 与 TEST 需要依靠资源组、VNet、RBAC 和 Policy 继续隔离。
-适用：大多数企业中兼顾安全和实施成本的方式。
+这样设计的原因：
+
+- 比把网络、VM、MID 再拆成多个资源组更容易理解和管理。
+- 可以在 Resource Group 级分别分配 Azure 权限。
+- 可以分别统计 DEV、TEST、PROD 成本。
+- 可以对 PROD Resource Group 设置 Delete Lock，降低误删除风险。
+- 后续规模扩大时，再根据 Network／Security 团队的管理边界拆分资源组。
+
+不建议：
+
+- 把三套环境的 VM 放进同一个 Resource Group。
+- 给 DEV／TEST 作业人员 Subscription 级 Contributor。
+- 只通过 VM 名称区分环境，而网络和权限全部共用。
 
 
-方案 C：一套 Subscription（最低建设门槛）
+3. VNet 和 Subnet 设计
 
-  同一 Subscription
-    ├─ DEV 独立资源组和 VNet
-    ├─ TEST 独立资源组和 VNet
-    └─ PROD 独立资源组和 VNet
+三个环境分别建立独立 VNet：
 
-优点：最快、最容易开始。
-缺点：权限和误操作范围更难隔离，PROD 风险较高。
-适用：短期验证或 Azure 组织规则无法提供多订阅的情况。
+- vnet-pc20-dev
+- vnet-pc20-test
+- vnet-pc20-prod
 
-第一版建议：
-- 首选方案 B，即 PROD 独立 Subscription，DEV／TEST 使用 Non-Prod Subscription。
-- 如果客户现有 Azure Landing Zone 已规定三订阅，则采用方案 A。
-- 如果只能使用一套 Subscription，也必须至少分成三个 Resource Group 和三个 VNet，不能只靠资源名称区分环境。
+每个 VNet 初步包含：
+
+- snet-mid：ACC 专用 MID Server
+- snet-windows：Windows 验证／管理对象
+- snet-linux：Linux 验证／管理对象
+- AzureBastionSubnet：仅在该环境单独部署 Azure Bastion 时建立
+
+IP 地址范围暂不写死，先由 Azure／Network 团队从公司地址管理规则中分配。三个 VNet 的地址空间必须互不重叠，也不能与现有 PC2.0、公司内网、VPN 或其他已连接 VNet 冲突。
+
+网络隔离原则：
+
+- DEV、TEST、PROD VNet 默认不直接互相 Peering。
+- DEV 机器不能直接访问 TEST／PROD 机器。
+- TEST 机器不能直接访问 PROD 机器。
+- 如果需要连接共用 Hub、DNS、Proxy、Bastion 或 Firewall，只开放批准的管理和出站通信。
+- PROD 的 NSG、Route、Firewall 规则独立审批，不能直接复制 DEV 的宽松规则。
+
+
+4. 单 Subscription 下的权限补偿措施
+
+由于 Subscription 没有分开，需要用以下措施保护 PROD：
+
+- Azure 权限尽量分配在 Resource Group 范围，而不是 Subscription 范围。
+- DEV 团队只管理 rg-pc20-dev。
+- TEST 团队只管理 rg-pc20-test。
+- PROD 变更人员只在审批后取得 rg-pc20-prod 所需权限。
+- 对 rg-pc20-prod 或关键 PROD 资源设置 Delete Lock。
+- 使用 Environment=DEV／TEST／PROD 标签，并为三个环境分别设置 Budget／Cost Alert。
+- Azure Activity Log 和关键操作日志统一保留，能够追踪谁在何时修改了什么。
+- Subscription 级 Policy 会影响三个环境；如果 PROD 规则不同，需要在 Resource Group 范围追加 Policy 或经过审批设置例外。
+
+
+5. 共用资源的边界
+
+可以考虑共用：
+
+- 日志和监控平台
+- 公司现有 DNS／NTP／Proxy
+- 公司批准的 Bastion／Jump Server
+- 经批准的软件安装包存储位置
+
+不建议共用：
+
+- ACC API Key
+- ServiceNow Credential
+- ACC Policy／Check 的环境配置
+- PROD 与 DEV／TEST 的 MID Server
+- PROD 与 DEV／TEST 的安装配置文件
+- 无权限隔离的 Key Vault
+
+即使共用 Log Analytics 或 Bastion，也必须确认 DEV／TEST 人员不会因此取得 PROD VM 或 PROD 日志中的敏感信息。
 
 
 五、每个环境内部的基本构成
@@ -182,6 +231,26 @@ Microsoft Entra Tenant
        （MECM 等方式安装）            （Linux 分发方式待定）
 
 管理员不应通过公开 IP 直接登录对象机器，优先使用公司批准的 Bastion、Jump Server 或其他管理路径。
+
+单 Subscription 总体概念图：
+
+Subscription-PC20
+│
+├─ rg-pc20-dev  ── vnet-pc20-dev  ── DEV MID ── DEV Agent
+│                                      │
+│                                      └──── ServiceNow DEV
+│
+├─ rg-pc20-test ── vnet-pc20-test ── TEST MID ── TEST Agent
+│                                      │
+│                                      └──── ServiceNow TEST
+│
+├─ rg-pc20-prod ── vnet-pc20-prod ── PROD MID 01／02 ── PROD Agent
+│                                      │
+│                                      └──── ServiceNow PROD
+│
+└─ rg-pc20-shared（可选：监控／Bastion／DNS／Proxy）
+
+三个环境在 Azure 的父级 Subscription 相同，但资源、网络、权限、MID Server、ACC 配置和 ServiceNow 数据路径分别管理。
 
 
 六、ServiceNow 与 Azure 环境的对应关系
@@ -408,7 +477,7 @@ Network／Security 团队：
 
 1. DEV／TEST／PROD 是只分 Azure，还是 ServiceNow 实例也分别存在？
 2. PC2.0 PROD 是真实生产，还是生产相当验证环境？
-3. Azure 可以提供三 Subscription、两 Subscription，还是只能一套？
+3. 已确定使用一套 Subscription；需要确认该订阅的名称、配额、允许区域、Azure Policy 和我们可取得的权限。
 4. 公司是否已有 Azure Landing Zone、Hub-Spoke、Palo Alto／Azure Firewall 等强制标准？
 5. ACC 对象包括 Windows Client、Windows Server、RHEL、Ubuntu 中的哪些？各多少台？
 6. 本次使用 ACC-VC、ACC-M、ACC-L 中的哪一种，还是只做 ACC 基础连接验证？
@@ -423,7 +492,7 @@ Network／Security 团队：
 完成本骨架确认后，建议按以下顺序逐块补充：
 
 第 1 次：确定范围、三环境定义和 ServiceNow 实例对应关系
-第 2 次：确定 Azure Subscription／Resource Group／VNet 结构
+第 2 次：确认单 Subscription 内的 Resource Group／VNet／IP 地址结构
 第 3 次：确定 VM、OS、MID Server 数量和规格
 第 4 次：制作网络通信矩阵和架构图
 第 5 次：制作 Azure／ServiceNow／OS 权限矩阵
@@ -432,7 +501,7 @@ Network／Security 团队：
 第 8 次：制作发布、回退、监控、故障处理和运维移交方案
 
 
-十六、第一版结论
+十六、单 Subscription 版结论
 
 PC2.0 的 ACC 导入不应理解为“做三套相同的 Azure 机器”，而应设计成：
 
@@ -440,7 +509,7 @@ PC2.0 的 ACC 导入不应理解为“做三套相同的 Azure 机器”，而�
 - TEST 负责接近生产条件的验证与验收
 - PROD 负责批准后的受控发布和正式运行
 
-在 Azure 上，至少保证三套独立 Resource Group 和 VNet；在企业条件允许时，优先把 PROD 放在独立 Subscription 中。
+在 Azure 上采用一套 Subscription，但必须保证 DEV、TEST、PROD 分别使用独立 Resource Group 和 VNet，并通过 Resource Group 级 RBAC、NSG、资源锁、标签和日志降低单订阅带来的误操作风险。
 在 ServiceNow 侧，优先采用 DEV／TEST／PROD 实例与各自 ACC 专用 MID Server 一一对应的结构，并使用不同的 API Key、Policy 和 Agent 分组，避免跨环境误连接和数据污染。
 
 
@@ -467,8 +536,14 @@ https://learn.microsoft.com/en-us/azure/governance/management-groups/overview
 7. Microsoft：Azure Resource Manager management scopes
 https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/overview
 
+8. Microsoft：Azure role-based access control（Azure RBAC）
+https://learn.microsoft.com/en-us/azure/role-based-access-control/overview
+
+9. Microsoft：Lock Azure resources to protect against accidental deletion
+https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources
+
 
 十八、资料使用说明
 
-本文件是第一次讨论用骨架，不是最终构筑手顺。
+本文件是采用一套 Azure Subscription 的总体设计骨架，不是最终构筑手顺。
 其中“建议”表示当前推荐方案；“需要确认”表示必须由 Leader 或相关专业团队决定；IP、端口、VM 规格、数量和费用在决策完成后再写入详细设计。
