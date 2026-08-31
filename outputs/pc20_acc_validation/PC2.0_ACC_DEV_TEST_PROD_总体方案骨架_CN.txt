@@ -1,0 +1,474 @@
+PC2.0 ACC DEV／TEST／PROD 环境总体方案骨架（第一版）
+
+版本：0.1
+用途：与 Leader、Azure 团队、ServiceNow 团队及安全团队进行第一次需求确认
+当前阶段：总体设计骨架。资源名称、IP、VM 规格、数量和详细通信规则将在后续逐项补充。
+
+
+一、这次任务要解决什么
+
+PC2.0 是运行在 Azure 上的系统。现在需要开始验证并逐步导入 ServiceNow Agent Client Collector（ACC）。
+本方案的目标不是简单复制三套机器，而是建立 DEV、TEST、PROD 三个职责清楚、数据相互隔离、可以逐级发布的环境。
+
+最终希望形成下面的流程：
+
+  DEV 开发与试错
+       ↓ 通过技术检查
+  TEST 集成验证与验收
+       ↓ 通过上线判断
+  PROD 受控发布与正式运行
+
+
+二、第一版设计的前提和待确认事项
+
+1. 本方案先把 DEV、TEST、PROD 作为三套“逻辑环境”设计。
+2. Azure 是否能够提供三套 Subscription（订阅），需要 Azure 管理团队确认。
+3. ServiceNow 是否也有 DEV、TEST、PROD 三个实例，需要 ServiceNow 管理团队确认。
+4. PC2.0 的 PROD 是真实生产环境，还是仅用于生产相当验证，需要 Leader 明确定义。
+5. 现有 Azure 网络、IP 范围、Firewall、Proxy、DNS、NTP、Bastion 和监控资源必须先盘点，不能直接沿用过去 PoC 的配置。
+6. ACC 本次主要面向 Server、Client，还是两者都包括，需要确认目标范围和数量。
+7. Windows 可考虑使用 MECM 分发；Linux 的分发方式需要另行确认，例如 Ansible、Puppet、Chef、内部文件传输机制或管理员执行。
+8. ACC 使用 MID Server 方式连接 ServiceNow。是否还要同时验证 MID-less／ITOM Cloud Services，不包含在第一版默认范围内。
+
+
+三、环境职责定义
+
+1. DEV 环境
+
+目的：制作、修改和反复试验 ACC 安装及配置方法。
+
+允许进行：
+- ACC 安装、卸载、重新安装
+- Windows MECM 安装包和 Linux 安装脚本调试
+- API Key、MID Server 地址和策略配置试验
+- 网络断开、错误配置、异常恢复等失败测试
+- ACC 版本升级和回退测试
+- 日志调查和脚本修改
+
+特点：
+- 允许频繁变更
+- 使用测试数据和测试机器
+- 出现失败不会影响 TEST／PROD
+- 不把 DEV 中临时生成的数据直接复制到 PROD
+
+
+2. TEST 环境
+
+目的：使用接近生产环境的条件，进行集成测试、回归测试和用户验收。
+
+主要验证：
+- 正式候选安装包能否稳定安装
+- Windows／Linux 主要版本是否都能正常运行
+- ACC 能否稳定连接指定 MID Server
+- 策略和 Check 是否正确下发
+- 数据是否正确进入 ServiceNow
+- CMDB 中 CI 是否正确创建或更新，是否出现重复记录
+- 主机重启、网络短暂中断后能否自动恢复
+- 安全、运维、回退和监控流程是否可执行
+
+特点：
+- 配置应尽量接近 PROD
+- 只使用已经在 DEV 验证过的安装包
+- 变更需要记录
+- 验证结果作为是否允许进入 PROD 的依据
+
+
+3. PROD 环境
+
+目的：在批准后，以受控方式向真实对象发布 ACC，并持续运行。
+
+基本原则：
+- 不进行破坏性试验
+- 只使用 TEST 验证通过的同一版本安装包
+- API Key、证书、MID Server 和策略使用 PROD 专用配置
+- 先小范围 Pilot，再分批扩大
+- 必须有停止条件、回退方法、监控负责人和故障联系窗口
+- PROD 数据不得混入 DEV／TEST 数据
+
+
+四、推荐的总体构成
+
+1. Azure 逻辑结构
+
+推荐的逻辑层级如下：
+
+Microsoft Entra Tenant
+└─ PC2.0 管理范围（Management Group 或现有公司管理结构）
+   ├─ PC2.0 DEV
+   │  ├─ 网络资源组
+   │  ├─ ACC／MID 管理资源组
+   │  └─ 验证对象资源组
+   ├─ PC2.0 TEST
+   │  ├─ 网络资源组
+   │  ├─ ACC／MID 管理资源组
+   │  └─ 验证对象资源组
+   └─ PC2.0 PROD
+      ├─ 网络资源组
+      ├─ ACC／MID 管理资源组
+      └─ 正式对象资源组
+
+这里表达的是管理逻辑。是否每个环境都使用独立 Subscription，需要从下面三种方式中选择。
+
+
+2. Azure 隔离方式候选
+
+方案 A：三套 Subscription（隔离最强）
+
+  Subscription-PC20-DEV
+  Subscription-PC20-TEST
+  Subscription-PC20-PROD
+
+优点：权限、费用、Policy、配额和误操作范围最容易隔离。
+缺点：需要 Azure 团队提供和管理三套订阅，建设及审批工作最多。
+适用：正式生产系统、长期运营、客户对隔离要求较高的场景。
+
+
+方案 B：两套 Subscription（平衡方案）
+
+  Subscription-PC20-NONPROD
+    ├─ DEV 资源组和 VNet
+    └─ TEST 资源组和 VNet
+
+  Subscription-PC20-PROD
+    └─ PROD 资源组和 VNet
+
+优点：PROD 与非生产环境明确隔离，成本和管理工作比三订阅低。
+缺点：DEV 与 TEST 需要依靠资源组、VNet、RBAC 和 Policy 继续隔离。
+适用：大多数企业中兼顾安全和实施成本的方式。
+
+
+方案 C：一套 Subscription（最低建设门槛）
+
+  同一 Subscription
+    ├─ DEV 独立资源组和 VNet
+    ├─ TEST 独立资源组和 VNet
+    └─ PROD 独立资源组和 VNet
+
+优点：最快、最容易开始。
+缺点：权限和误操作范围更难隔离，PROD 风险较高。
+适用：短期验证或 Azure 组织规则无法提供多订阅的情况。
+
+第一版建议：
+- 首选方案 B，即 PROD 独立 Subscription，DEV／TEST 使用 Non-Prod Subscription。
+- 如果客户现有 Azure Landing Zone 已规定三订阅，则采用方案 A。
+- 如果只能使用一套 Subscription，也必须至少分成三个 Resource Group 和三个 VNet，不能只靠资源名称区分环境。
+
+
+五、每个环境内部的基本构成
+
+每个环境至少包含以下逻辑组件：
+
+1. 独立 VNet
+2. MID Server 所在管理 Subnet
+3. Windows 验证对象 Subnet
+4. Linux 验证对象 Subnet
+5. NSG／Firewall／Route 等通信控制
+6. 管理员安全登录路径，例如 Azure Bastion 或公司批准的 Jump Server
+7. 日志和监控
+8. 环境专用 ACC 配置、API Key、Policy 和 Check
+
+概念图：
+
+                          ServiceNow 实例
+                                ↑
+                         HTTPS／出站通信
+                                ↑
+                   ACC 专用 MID Server
+                                ↑
+                       ACC 长连接／WSS
+                ┌───────────────┴───────────────┐
+                │                               │
+          Windows 对象                     Linux 对象
+       （MECM 等方式安装）            （Linux 分发方式待定）
+
+管理员不应通过公开 IP 直接登录对象机器，优先使用公司批准的 Bastion、Jump Server 或其他管理路径。
+
+
+六、ServiceNow 与 Azure 环境的对应关系
+
+推荐关系：
+
+Azure DEV  ── ACC ── MID-ACC-DEV  ── ServiceNow DEV
+Azure TEST ── ACC ── MID-ACC-TEST ── ServiceNow TEST
+Azure PROD ── ACC ── MID-ACC-PROD ── ServiceNow PROD
+
+重要说明：
+
+1. 最理想的是 Azure 三环境和 ServiceNow 三实例一一对应。
+2. ServiceNow 官方建议先在 Sub-Production 实例进行 Pilot 和 Test，再进入生产。
+3. ACC Server Deployment 通过 MID Server 将 Agent 数据转发给 ServiceNow。
+4. 为降低安全风险，ACC 使用的 MID Server 建议专用，不与 Discovery、Orchestration 等其他用途混用。
+5. DEV 和 TEST 初期可以各使用 1 台 ACC 专用 MID Server。
+6. PROD 目标构成应考虑至少 2 台 ACC 专用 MID Server，以避免单点故障；最终数量要根据 Agent 数、容量和可用性要求决定。
+7. 如果公司只有一个 ServiceNow 实例，仍可通过独立 MID、API Key、Policy、Agent 分组、命名和标签进行逻辑隔离，但数据污染和误操作风险会明显高于三实例方式，必须作为例外方案审批。
+
+
+七、ACC 验证范围骨架
+
+1. 安装与分发
+- Windows 静默安装
+- MECM 分发安装
+- Linux RPM 安装
+- Linux 分发方式确认
+- 安装成功／失败结果取得
+- 服务自动启动
+
+2. 注册与连接
+- Agent 注册成功
+- API Key 有效性
+- ACC 到 MID Server 的连接
+- MID Server 到 ServiceNow 的连接
+- DNS、证书、Firewall、Proxy 的影响
+
+3. 策略与数据
+- Policy 下发
+- Check 执行
+- 标准数据取得
+- 数据到达 ServiceNow
+- Agent 状态和错误信息可视化
+
+4. CMDB
+- CI 创建
+- 已存在 CI 的更新
+- IRE 识别结果
+- 重复 CI 检查
+- DEV／TEST／PROD 数据隔离
+
+5. 稳定性
+- OS 重启
+- ACC 服务重启
+- MID Server 重启
+- 网络短暂中断
+- 自动重连
+- 连续运行观察
+
+6. 维护性
+- ACC 升级
+- 配置变更
+- API Key 轮换
+- 卸载
+- 回退
+- 日志收集和故障调查
+
+7. 安全性
+- 最小权限
+- API Key 不写入 Git 或普通共享资料
+- 安装包完整性检查
+- 管理操作记录
+- 通信加密
+- PROD 变更审批
+
+8. 大规模发布准备
+- Pilot 对象选择
+- 分批数量
+- 每批停止条件
+- 成功率监控
+- ServiceNow／MID 负载监控
+- 回退对象和回退时间
+
+
+八、初步资源数量（用于估算，不是最终定案）
+
+DEV：
+- ACC 专用 MID Server：1 台
+- Windows 验证机：最少 1 台
+- Linux 验证机：最少 1 台
+- 必要时增加 Windows Server／Client、RHEL／Ubuntu 的版本组合
+
+TEST：
+- ACC 专用 MID Server：1 台
+- Windows Server：最少 1 台
+- Windows Client：最少 1 台
+- RHEL：最少 1 台
+- Ubuntu：最少 1 台
+- 配置尽量接近 PROD
+
+PROD：
+- ACC 专用 MID Server：建议 2 台起步，最终按容量设计
+- ACC 对象：先选择少量 Pilot，再逐批扩大
+- 不建议一开始对全部 PC2.0 机器同时发布
+
+共通或按环境准备：
+- 软件分发平台
+- Azure Bastion／Jump Server
+- Key Vault 或公司批准的秘密信息管理方式
+- 日志／监控工作区
+- DNS、NTP、Proxy、证书和安全规则
+
+
+九、权限和安全设计骨架
+
+1. Azure 权限
+- 只给作业人员必要环境的权限
+- DEV 作业权限不能自动继承到 PROD
+- Network、VM、Security、RBAC 的管理职责分开
+- PROD 权限采用申请、审批和期限管理
+
+2. ServiceNow 权限
+- ACC 管理角色只给指定人员
+- DEV／TEST／PROD 使用不同的管理账号或角色范围
+- PROD Policy 变更需要审批
+
+3. 秘密信息
+- DEV／TEST／PROD 使用不同 API Key
+- API Key 不写死在公开脚本、Excel、Git 或邮件正文中
+- 明确生成、保管、轮换、失效和紧急替换负责人
+
+4. 网络
+- 默认拒绝不需要的通信
+- 只开放 ACC、MID、管理、更新和基础服务所需流量
+- 详细端口、方向、源、目标和用途在下一阶段形成通信矩阵
+
+
+十、避免数据污染的设计
+
+1. DEV Agent 只连接 DEV MID 和 DEV ServiceNow。
+2. TEST Agent 只连接 TEST MID 和 TEST ServiceNow。
+3. PROD Agent 只连接 PROD MID 和 PROD ServiceNow。
+4. 每个环境使用独立 API Key、Policy、Check、Agent Group 和命名规则。
+5. Azure 资源统一增加 Environment 标签。
+6. 安装包本体可以相同，但配置值和秘密信息必须按环境注入。
+7. 重装测试前先确认 Agent／CI 的清理方式，避免产生重复记录。
+8. 从 TEST 进入 PROD 时发布的是“已验证的安装包和配置模板”，不是复制 TEST 的 CMDB 数据。
+
+
+十一、发布流程和质量关口
+
+阶段 0：需求确认
+输出：范围、对象、环境、责任人、成功标准和限制事项。
+
+阶段 1：总体与详细设计
+输出：架构图、资源清单、通信矩阵、权限矩阵、命名规则和费用估算。
+
+阶段 2：DEV 构筑
+输出：可重复执行的安装包、脚本、配置方法、日志方法和回退方法。
+
+DEV 完成条件：
+- Windows／Linux 基本安装成功
+- Agent 能连接 DEV MID
+- 数据能到达 DEV ServiceNow
+- 卸载、重装和失败恢复方法明确
+
+阶段 3：TEST 构筑与验证
+输出：测试结果、问题清单、修正版安装包和上线判断材料。
+
+TEST 完成条件：
+- 主要 OS 组合通过
+- CMDB 无不可接受的重复或错误更新
+- 重启和网络中断后能恢复
+- 安全、监控和回退流程通过
+- Leader／相关团队同意进入 PROD Pilot
+
+阶段 4：PROD Pilot
+输出：Pilot 结果、实际成功率、影响、性能和改进事项。
+
+阶段 5：PROD 分批展开
+输出：每批结果、异常处置、最终覆盖率和运维移交。
+
+
+十二、建议的初始成功标准（需要 Leader 批准）
+
+1. 安装成功率达到约定目标，例如 Pilot 95％以上。
+2. 安装后 Agent 在规定时间内连接正确的 MID Server。
+3. Policy／Check 能执行并返回预期数据。
+4. CMDB 中 CI 能正确创建或更新，没有不可接受的重复 CI。
+5. OS、ACC、MID 重启后能够自动恢复连接。
+6. 失败对象能够从日志中定位原因，并有明确处理方法。
+7. API Key、证书和权限符合安全要求。
+8. 安装、升级、卸载和回退均有可执行手顺。
+
+注意：95％只是便于讨论的建议值，不是 ServiceNow 强制标准，最终需要根据 PC2.0 的业务要求决定。
+
+
+十三、角色分工骨架
+
+Leader／系统负责人：
+- 决定范围、优先级、成本、风险接受和 Go／No-Go。
+
+Azure 团队：
+- Subscription、Resource Group、VNet、Subnet、NSG、Route、Firewall、Bastion、监控和 Azure RBAC。
+
+ServiceNow／ITOM 团队：
+- 实例、插件、ACC、MID Server、API Key、Policy、Check、Agent 状态和 CMDB 验证。
+
+MECM／终端管理团队：
+- Windows 安装包、Collection、Deployment、Detection Method、失败结果和回退。
+
+Linux 管理团队：
+- Linux 分发机制、root／sudo 权限、RPM 安装、服务控制和日志。
+
+Network／Security 团队：
+- 通信审批、Firewall／Proxy、证书、秘密信息和安全审查。
+
+测试负责人：
+- 测试用例、证据、问题管理、验收结果和报告。
+
+
+十四、现在需要向 Leader 确认的十个问题
+
+1. DEV／TEST／PROD 是只分 Azure，还是 ServiceNow 实例也分别存在？
+2. PC2.0 PROD 是真实生产，还是生产相当验证环境？
+3. Azure 可以提供三 Subscription、两 Subscription，还是只能一套？
+4. 公司是否已有 Azure Landing Zone、Hub-Spoke、Palo Alto／Azure Firewall 等强制标准？
+5. ACC 对象包括 Windows Client、Windows Server、RHEL、Ubuntu 中的哪些？各多少台？
+6. 本次使用 ACC-VC、ACC-M、ACC-L 中的哪一种，还是只做 ACC 基础连接验证？
+7. DEV／TEST／PROD 是否都要使用 ACC 专用 MID Server？PROD 是否要求冗余？
+8. Windows 使用 MECM，那么 Linux 使用什么分发工具？
+9. 谁负责 API Key、证书、网络规则、安装包和 PROD 变更审批？
+10. 期望的完成日期、预算、成功率、覆盖率和运行观察时间是多少？
+
+
+十五、后续详细化顺序
+
+完成本骨架确认后，建议按以下顺序逐块补充：
+
+第 1 次：确定范围、三环境定义和 ServiceNow 实例对应关系
+第 2 次：确定 Azure Subscription／Resource Group／VNet 结构
+第 3 次：确定 VM、OS、MID Server 数量和规格
+第 4 次：制作网络通信矩阵和架构图
+第 5 次：制作 Azure／ServiceNow／OS 权限矩阵
+第 6 次：整理 Windows MECM 和 Linux 分发方法
+第 7 次：制作 ACC 验证项目、步骤、期待结果和证据模板
+第 8 次：制作发布、回退、监控、故障处理和运维移交方案
+
+
+十六、第一版结论
+
+PC2.0 的 ACC 导入不应理解为“做三套相同的 Azure 机器”，而应设计成：
+
+- DEV 负责制作和试错
+- TEST 负责接近生产条件的验证与验收
+- PROD 负责批准后的受控发布和正式运行
+
+在 Azure 上，至少保证三套独立 Resource Group 和 VNet；在企业条件允许时，优先把 PROD 放在独立 Subscription 中。
+在 ServiceNow 侧，优先采用 DEV／TEST／PROD 实例与各自 ACC 专用 MID Server 一一对应的结构，并使用不同的 API Key、Policy 和 Agent 分组，避免跨环境误连接和数据污染。
+
+
+十七、官网参考资料
+
+1. ServiceNow：Agent Client Collector planning checklist
+https://www.servicenow.com/docs/r/it-operations-management/agent-client-collector/acc-planning-checklist.html
+
+2. ServiceNow：Agent Client Collector deployment checklist
+https://www.servicenow.com/docs/r/it-operations-management/agent-client-collector/acc-deployment-checklist.html
+
+3. ServiceNow：ACC deployment - servers
+https://www.servicenow.com/docs/r/it-operations-management/agent-client-collector/acc-server-deployment.html
+
+4. ServiceNow：Configure an ACC with a MID Server
+https://www.servicenow.com/docs/r/it-operations-management/agent-client-collector/configure-acc-with-mid.html
+
+5. ServiceNow：Configure a websocket endpoint
+https://www.servicenow.com/docs/r/it-operations-management/agent-client-collector/acc-configure-websocket-endpoint.html
+
+6. Microsoft：Azure Management Groups
+https://learn.microsoft.com/en-us/azure/governance/management-groups/overview
+
+7. Microsoft：Azure Resource Manager management scopes
+https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/overview
+
+
+十八、资料使用说明
+
+本文件是第一次讨论用骨架，不是最终构筑手顺。
+其中“建议”表示当前推荐方案；“需要确认”表示必须由 Leader 或相关专业团队决定；IP、端口、VM 规格、数量和费用在决策完成后再写入详细设计。
